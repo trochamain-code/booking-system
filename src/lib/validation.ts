@@ -92,3 +92,27 @@ export function parseBoundedInt(
 export function cleanText(v: FormDataEntryValue | null, maxLen: number): string {
   return String(v ?? "").trim().slice(0, maxLen);
 }
+
+/** Common IANA timezones shown in admin selectors. */
+export const COMMON_TZS = [
+  "Europe/Madrid",
+  "Atlantic/Canary",
+  "Europe/Lisbon",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Rome",
+  "America/Mexico_City",
+  "America/Argentina/Buenos_Aires",
+  "America/Bogota",
+  "America/Lima",
+  "America/Santiago",
+  "America/Caracas",
+  "America/Panama",
+  "America/Havana",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "UTC",
+] as const;

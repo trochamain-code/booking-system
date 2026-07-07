@@ -15,7 +15,7 @@ import {
   adminDeleteClosure,
   adminCancelBooking,
 } from "@/lib/admin-actions";
-import { isDateStr } from "@/lib/validation";
+import { isDateStr, COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -122,7 +122,9 @@ export default async function AdminCompanyPage({
             </div>
             <div>
               <label className="label" htmlFor="timezone">Zona horaria</label>
-              <input id="timezone" name="timezone" defaultValue={company.timezone} required className="input font-mono text-sm" />
+              <select id="timezone" name="timezone" required className="select font-mono text-sm">
+                {COMMON_TZS.map((tz) => <option key={tz} value={tz} selected={company.timezone === tz}>{tz}</option>)}
+              </select>
             </div>
             <div>
               <label className="label" htmlFor="color">Color principal</label>

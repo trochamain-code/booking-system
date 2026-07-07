@@ -5,6 +5,7 @@ import { logout } from "@/lib/actions";
 import { createCompany, updateCompany, deleteCompany } from "@/lib/admin-actions";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/schema";
+import { COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "./confirm-form";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
@@ -100,7 +101,9 @@ export default async function AdminPage({
                       </div>
                       <div>
                         <label className="label" htmlFor={`timezone-${c.id}`}>Zona horaria</label>
-                        <input id={`timezone-${c.id}`} name="timezone" defaultValue={c.timezone} required className="input font-mono text-sm" />
+                        <select id={`timezone-${c.id}`} name="timezone" required className="select font-mono text-sm">
+                          {COMMON_TZS.map((tz) => <option key={tz} value={tz} selected={c.timezone === tz}>{tz}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="label" htmlFor={`color-${c.id}`}>Color principal</label>
@@ -150,7 +153,9 @@ export default async function AdminPage({
               <label className="label" htmlFor="timezone">
                 Zona horaria (IANA)
               </label>
-              <input id="timezone" name="timezone" defaultValue="Europe/Madrid" className="input" />
+              <select id="timezone" name="timezone" required className="select font-mono text-sm">
+                {COMMON_TZS.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
+              </select>
             </div>
             <div>
               <label className="label" htmlFor="email">
