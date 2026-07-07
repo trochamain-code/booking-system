@@ -16,6 +16,7 @@ import {
   adminCancelBooking,
 } from "@/lib/admin-actions";
 import { isDateStr } from "@/lib/validation";
+import { ConfirmForm } from "../../confirm-form";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -299,11 +300,11 @@ export default async function AdminCompanyPage({
                     {cancelled ? (
                       <span className="badge bg-danger-bg text-danger">Cancelada</span>
                     ) : (
-                      <form action={adminCancelBooking} onSubmit={(e) => { if (!confirm("¿Cancelar esta reserva?")) e.preventDefault(); }}>
+                      <ConfirmForm message="¿Cancelar esta reserva?" action={adminCancelBooking}>
                         <input type="hidden" name="companyId" value={id} />
                         <input type="hidden" name="id" value={b.id} />
                         <button className="text-xs text-subtle transition hover:text-danger">Cancelar</button>
-                      </form>
+                      </ConfirmForm>
                     )}
                   </li>
                 );
@@ -320,10 +321,10 @@ export default async function AdminCompanyPage({
               Eliminar esta empresa borrará todos los datos asociados (usuarios, recursos, horarios, reservas).
               Esta acción no se puede deshacer.
             </p>
-            <form action={deleteCompany} onSubmit={(e) => { if (!confirm(`¿Eliminar definitivamente "${company.name}"?`)) e.preventDefault(); }} className="mt-4">
+            <ConfirmForm message={`¿Eliminar definitivamente "${company.name}"?`} action={deleteCompany} className="mt-4">
               <input type="hidden" name="id" value={company.id} />
               <button className="btn btn-danger">Eliminar empresa</button>
-            </form>
+            </ConfirmForm>
           </div>
         </section>
       </main>

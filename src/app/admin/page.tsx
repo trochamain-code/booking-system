@@ -5,6 +5,7 @@ import { logout } from "@/lib/actions";
 import { createCompany, updateCompany, deleteCompany } from "@/lib/admin-actions";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/schema";
+import { ConfirmForm } from "./confirm-form";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   created: { text: "Empresa creada.", ok: true },
@@ -121,14 +122,14 @@ export default async function AdminPage({
                         <label className="label" htmlFor={`contact-${c.id}`}>Contacto (pie de email)</label>
                         <input id={`contact-${c.id}`} name="contactInfo" defaultValue={c.contactInfo ?? ""} placeholder="Dirección / teléfono" className="input" />
                       </div>
-                      <div className="sm:col-span-2 flex gap-2">
+                      <div className="sm:col-span-2 flex items-center gap-2">
                         <button className="btn btn-primary">Guardar cambios</button>
-                        <form action={deleteCompany} onSubmit={(e) => { if (!confirm(`¿Eliminar "${c.name}" definitivamente?`)) e.preventDefault(); }}>
-                          <input type="hidden" name="id" value={c.id} />
-                          <button className="btn btn-danger btn-sm">Eliminar</button>
-                        </form>
                       </div>
                     </form>
+                    <ConfirmForm message={`¿Eliminar "${c.name}" definitivamente?`} action={deleteCompany} className="mt-3">
+                      <input type="hidden" name="id" value={c.id} />
+                      <button className="btn btn-danger btn-sm">Eliminar empresa</button>
+                    </ConfirmForm>
                   </div>
                 </details>
               ))}
