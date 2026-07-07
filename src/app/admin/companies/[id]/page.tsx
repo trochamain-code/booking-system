@@ -19,6 +19,7 @@ import {
 import { isDateStr, COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "../../copy-button";
+import { PasswordField } from "../../../password-field";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -175,7 +176,7 @@ export default async function AdminCompanyPage({
             </div>
             <div>
               <label className="label" htmlFor="owner-password">Nueva contraseña (dejar vacío para no cambiar)</label>
-              <input id="owner-password" name="password" type="password" minLength={8} className="input" />
+              <PasswordField id="owner-password" name="password" minLength={8} />
             </div>
             <div className="sm:col-span-2">
               <button className="btn btn-primary">Actualizar propietario</button>

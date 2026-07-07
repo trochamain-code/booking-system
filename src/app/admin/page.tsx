@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { companies } from "@/lib/schema";
 import { COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "./confirm-form";
+import { PasswordField } from "../password-field";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   created: { text: "Empresa creada.", ok: true },
@@ -167,7 +168,7 @@ export default async function AdminPage({
               <label className="label" htmlFor="password">
                 Contraseña (8+)
               </label>
-              <input id="password" name="password" type="password" required minLength={8} className="input" />
+              <PasswordField id="password" name="password" required minLength={8} />
             </div>
             <div className="sm:col-span-2">
               <button className="btn btn-primary">Crear empresa y propietario</button>
