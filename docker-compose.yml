@@ -1,12 +1,15 @@
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: booking
       POSTGRES_PASSWORD: booking
       POSTGRES_DB: booking
+    # Bind to localhost only so Postgres isn't reachable from outside the host.
+    # Set DB_PORT= (empty) in production to publish no host port at all.
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-127.0.0.1:5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,20 +20,51 @@ services:
 
   app:
     build: .
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://booking:booking@db:5432/booking
       # ponytail: dev default so `docker compose up` just works. Override in prod:
       #   export AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
       AUTH_SECRET: ${AUTH_SECRET:-dev_change_me_use_a_real_32_byte_secret_in_prod}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Public URL served through the Cloudflare tunnel (used for email links, etc.).
+      APP_URL: ${APP_URL:-https://booking.host-ia.online}
       NODE_ENV: production
+      # Super-admin seeded on startup (idempotent). Set these in .env.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
       # Optional email: set these to send real confirmations via Resend.
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-reservas@trocha.shop}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-reservas@trocha.shop}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
       db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+  # Cloudflare Tunnel: publishes the app at https://booking.host-ia.online
+  # without exposing any host port. Reaches the app over the compose network.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/tunnel-credentials.json:/etc/cloudflared/tunnel-credentials.json:ro
+    depends_on:
+      app:
         condition: service_healthy
 
 volumes:

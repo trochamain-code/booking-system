@@ -23,7 +23,7 @@ async function main() {
 
   await db.insert(users).values({
     email: "owner@demo.com",
-    passwordHash: hashPassword("password123"),
+    passwordHash: await hashPassword("password123"),
     role: "owner",
     companyId: company.id,
   });

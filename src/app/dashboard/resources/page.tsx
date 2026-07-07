@@ -4,8 +4,13 @@ import { resources } from "@/lib/schema";
 import { addResource, updateResource } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 
-export default async function ResourcesPage() {
+export default async function ResourcesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { companyId } = await requireCompany();
+  const { error } = await searchParams;
   const rows = await db
     .select()
     .from(resources)
@@ -20,6 +25,12 @@ export default async function ResourcesPage() {
           Mesas, sillas, pistas, salas… lo que se reserve. El aforo es cuántas personas admite.
         </p>
       </header>
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+          Revisa los datos: el nombre es obligatorio y el aforo debe ser un número válido.
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <div className="card p-8 text-center">

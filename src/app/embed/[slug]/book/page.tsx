@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCompanyBySlug } from "@/lib/booking-data";
 import { createBooking } from "@/lib/booking-actions";
+import { contrastText } from "@/lib/color";
 
 export default async function BookPage({
   params,
@@ -19,34 +20,56 @@ export default async function BookPage({
   const party = Math.max(1, parseInt(sp.party ?? "2", 10) || 2);
   const startAt = sp.startAt ?? "";
 
-  const when = startAt
-    ? new Intl.DateTimeFormat("es-ES", {
-        timeZone: company.timezone,
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(startAt))
-    : "";
+  const startDate = startAt ? new Date(startAt) : null;
+  if (!startDate || Number.isNaN(startDate.getTime())) {
+    redirect(`/embed/${slug}?date=${encodeURIComponent(date)}&party=${party}`);
+  }
+
+  const when = new Intl.DateTimeFormat("es-ES", {
+    timeZone: company.timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(startDate);
 
   return (
-    <main className="mx-auto max-w-lg p-4 sm:p-6" style={{ ["--brand" as string]: company.primaryColor }}>
+    <main className="mx-auto max-w-lg p-4 sm:p-6" style={{ ["--brand" as string]: company.primaryColor, ["--brand-text" as string]: contrastText(company.primaryColor) }}>
       <div className="card overflow-hidden">
-        <header className="border-b border-border p-5">
+        <div style={{ height: "4px", backgroundColor: "var(--brand)" }} />
+
+        <header className="p-5">
           <Link
             href={`/embed/${slug}?date=${date}&party=${party}`}
             className="text-sm text-muted transition hover:text-ink"
           >
             ← Cambiar horario
           </Link>
-          <h1 className="mt-2 text-xl font-semibold text-ink">{company.name}</h1>
-          <p className="mt-1 text-sm text-muted first-letter:uppercase">
-            {when} · {party} personas
-          </p>
+          <div className="mt-3 flex items-center gap-3">
+            {company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={company.logoUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+            ) : (
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
+                style={{ backgroundColor: "var(--brand)" }}
+                aria-hidden
+              >
+                {company.name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
+              <p className="mt-0.5 text-sm text-muted">{company.welcomeText || "Reserva tu mesa"}</p>
+              <p className="text-sm text-muted first-letter:uppercase">
+                {when} · {party} personas
+              </p>
+            </div>
+          </div>
         </header>
 
-        <div className="p-5">
+        <div className="p-5 pt-0">
           {sp.error && (
             <p role="alert" className="mb-4 rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
               Introduce tu nombre y un correo válido.

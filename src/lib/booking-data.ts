@@ -2,6 +2,7 @@ import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "./db";
 import { companies, resources, openingHours, closures, bookings } from "./schema";
 import { availableSlots, dayRangeUtc, type Slot } from "./availability";
+import { MAX_DURATION_MIN } from "./validation";
 import type { Company } from "./schema";
 
 export async function getCompanyBySlug(slug: string): Promise<Company | undefined> {
@@ -21,6 +22,7 @@ export async function getBookingByToken(token: string) {
       slug: companies.slug,
       primaryColor: companies.primaryColor,
       logoUrl: companies.logoUrl,
+      welcomeText: companies.welcomeText,
     })
     .from(bookings)
     .innerJoin(companies, eq(bookings.companyId, companies.id))
@@ -35,6 +37,9 @@ export async function getAvailability(
   partySize: number,
 ): Promise<Slot[]> {
   const { start, end } = dayRangeUtc(date, company.timezone);
+  // Widen the lower bound by the max possible duration so a long booking that
+  // started before midnight but overlaps today's early slots is still fetched.
+  const overlapStart = new Date(start.getTime() - MAX_DURATION_MIN * 60_000);
   const [res, hrs, cls, bks] = await Promise.all([
     db.select().from(resources).where(eq(resources.companyId, company.id)),
     db.select().from(openingHours).where(eq(openingHours.companyId, company.id)),
@@ -46,7 +51,7 @@ export async function getAvailability(
         and(
           eq(bookings.companyId, company.id),
           eq(bookings.status, "confirmed"),
-          gte(bookings.startAt, start),
+          gte(bookings.startAt, overlapStart),
           lt(bookings.startAt, end),
         ),
       ),
@@ -62,5 +67,6 @@ export async function getAvailability(
     hours: hrs.map((h) => ({ dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime })),
     closures: cls.map((c) => c.date),
     bookings: bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin })),
+    nowMs: Date.now(),
   });
 }

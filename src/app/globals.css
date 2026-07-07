@@ -130,10 +130,10 @@
   }
 
   /* Tenant-branded controls — colour comes from --brand set on an ancestor.
-     ponytail: white text on brand; add a luminance check if a tenant picks a pale brand. */
+     Text colour auto-computed via --brand-text (luminance-based). */
   .btn-brand {
     background-color: var(--brand);
-    color: #fff;
+    color: var(--brand-text, #fff);
   }
   .btn-brand:hover {
     opacity: 0.92;

@@ -16,7 +16,9 @@ export default async function LoginPage({
         <form action={login} className="card space-y-4 p-6">
           {error && (
             <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
-              Correo o contraseña no válidos.
+              {error === "rate"
+                ? "Demasiados intentos. Espera un momento e inténtalo de nuevo."
+                : "Correo o contraseña no válidos."}
             </p>
           )}
           <div>

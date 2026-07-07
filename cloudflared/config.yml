@@ -1,0 +1,9 @@
+tunnel: 8a44a94a-dc8b-405c-b6a8-0262d6561c21
+credentials-file: /etc/cloudflared/tunnel-credentials.json
+
+# No inbound ports are opened on the host: cloudflared dials the app container
+# over the compose network and Cloudflare's edge tunnels traffic in.
+ingress:
+  - hostname: booking.host-ia.online
+    service: http://app:3000
+  - service: http_status:404

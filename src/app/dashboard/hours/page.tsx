@@ -11,8 +11,13 @@ import { requireCompany } from "@/lib/company";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-export default async function HoursPage() {
+export default async function HoursPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { companyId } = await requireCompany();
+  const { error } = await searchParams;
 
   const [hours, closed] = await Promise.all([
     db
@@ -25,6 +30,11 @@ export default async function HoursPage() {
 
   return (
     <div className="space-y-10">
+      {error && (
+        <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+          No se pudo guardar. Comprueba el día, la fecha y que la hora de apertura sea anterior a la de cierre.
+        </p>
+      )}
       <section className="space-y-5">
         <header>
           <h1 className="text-2xl font-semibold text-ink">Horario de apertura</h1>

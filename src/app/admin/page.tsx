@@ -1,14 +1,19 @@
+import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { requireRole } from "@/lib/session";
 import { logout } from "@/lib/actions";
-import { createCompany } from "@/lib/admin-actions";
+import { createCompany, updateCompany, deleteCompany } from "@/lib/admin-actions";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/schema";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   created: { text: "Empresa creada.", ok: true },
-  invalid: { text: "Se requiere nombre, correo y una contraseña de 8+ caracteres.", ok: false },
+  updated: { text: "Empresa actualizada.", ok: true },
+  deleted: { text: "Empresa eliminada.", ok: true },
+  invalid: { text: "Se requiere nombre, correo válido y una contraseña de 8+ caracteres.", ok: false },
   email: { text: "Ese correo de propietario ya está en uso.", ok: false },
+  timezone: { text: "Zona horaria no válida. Usa un identificador IANA como Europe/Madrid.", ok: false },
+  slug_taken: { text: "Ese slug ya está en uso por otra empresa.", ok: false },
 };
 
 export default async function AdminPage({
@@ -56,25 +61,78 @@ export default async function AdminPage({
               <p className="mt-1 text-sm text-muted">Crea la primera con el formulario de abajo.</p>
             </div>
           ) : (
-            <ul className="card divide-y divide-border">
+            <div className="card divide-y divide-border">
               {rows.map((c) => (
-                <li key={c.id} className="flex items-center gap-3 px-4 py-3">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
-                    style={{ backgroundColor: c.primaryColor }}
-                    aria-hidden
-                  >
-                    {c.name.slice(0, 1).toUpperCase()}
+                <details key={c.id} className="group">
+                  <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-surface-2">
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
+                      style={{ backgroundColor: c.primaryColor }}
+                      aria-hidden
+                    >
+                      {c.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink">{c.name}</p>
+                      <p className="truncate text-xs text-muted">
+                        /{c.slug} · {c.timezone}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/admin/companies/${c.id}`}
+                      className="btn btn-ghost btn-sm"
+                    >
+                      Gestionar
+                    </Link>
+                    <span className="text-xs text-muted transition group-open:rotate-180">&#9660;</span>
+                  </summary>
+                  <div className="border-t border-border p-4">
+                    <form action={updateCompany} className="grid gap-4 sm:grid-cols-2">
+                      <input type="hidden" name="id" value={c.id} />
+                      <div>
+                        <label className="label" htmlFor={`name-${c.id}`}>Nombre</label>
+                        <input id={`name-${c.id}`} name="name" defaultValue={c.name} required className="input" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`slug-${c.id}`}>Slug</label>
+                        <input id={`slug-${c.id}`} name="slug" defaultValue={c.slug} required className="input font-mono text-sm" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`timezone-${c.id}`}>Zona horaria</label>
+                        <input id={`timezone-${c.id}`} name="timezone" defaultValue={c.timezone} required className="input font-mono text-sm" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`color-${c.id}`}>Color principal</label>
+                        <input id={`color-${c.id}`} name="primaryColor" type="color" defaultValue={c.primaryColor} className="h-11 w-14 cursor-pointer rounded-xl border border-border bg-surface p-1" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="label" htmlFor={`logo-${c.id}`}>URL del logo</label>
+                        <input id={`logo-${c.id}`} name="logoUrl" type="url" defaultValue={c.logoUrl ?? ""} placeholder="https://…/logo.png" className="input" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="label" htmlFor={`welcome-${c.id}`}>Texto de bienvenida (widget)</label>
+                        <input id={`welcome-${c.id}`} name="welcomeText" defaultValue={c.welcomeText ?? ""} placeholder="Ej: Reserva tu experiencia" className="input" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`sender-${c.id}`}>Nombre remitente (email)</label>
+                        <input id={`sender-${c.id}`} name="senderName" defaultValue={c.senderName ?? ""} placeholder={c.name} className="input" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor={`contact-${c.id}`}>Contacto (pie de email)</label>
+                        <input id={`contact-${c.id}`} name="contactInfo" defaultValue={c.contactInfo ?? ""} placeholder="Dirección / teléfono" className="input" />
+                      </div>
+                      <div className="sm:col-span-2 flex gap-2">
+                        <button className="btn btn-primary">Guardar cambios</button>
+                        <form action={deleteCompany} onSubmit={(e) => { if (!confirm(`¿Eliminar "${c.name}" definitivamente?`)) e.preventDefault(); }}>
+                          <input type="hidden" name="id" value={c.id} />
+                          <button className="btn btn-danger btn-sm">Eliminar</button>
+                        </form>
+                      </div>
+                    </form>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-ink">{c.name}</p>
-                    <p className="truncate text-xs text-muted">
-                      /{c.slug} · {c.timezone}
-                    </p>
-                  </div>
-                </li>
+                </details>
               ))}
-            </ul>
+            </div>
           )}
         </section>
 

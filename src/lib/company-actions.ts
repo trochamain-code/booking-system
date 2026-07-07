@@ -4,8 +4,23 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "./db";
-import { resources, openingHours, closures, bookings, companies } from "./schema";
+import { resources, openingHours, closures, bookings, companies, users } from "./schema";
 import { requireRole } from "./session";
+import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
+import {
+  cleanText,
+  isDateStr,
+  isHexColor,
+  isHttpUrl,
+  isTimeStr,
+  isUuid,
+  parseBoundedInt,
+  MAX_CAPACITY,
+  MAX_NAME_LEN,
+  MAX_REASON_LEN,
+} from "./validation";
+
+const DEFAULT_COLOR = "#111827";
 
 async function currentCompanyId(): Promise<string> {
   const session = await requireRole("owner", "staff");
@@ -13,17 +28,12 @@ async function currentCompanyId(): Promise<string> {
   return session.companyId;
 }
 
-function toInt(v: FormDataEntryValue | null, min: number, fallback: number): number {
-  const n = parseInt(String(v ?? ""), 10);
-  return Number.isFinite(n) && n >= min ? n : fallback;
-}
-
 // --- Resources ---
 
 export async function addResource(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
-  const name = String(formData.get("name") ?? "").trim();
-  const capacity = toInt(formData.get("capacity"), 1, 1);
+  const name = cleanText(formData.get("name"), MAX_NAME_LEN);
+  const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
   if (!name) redirect("/dashboard/resources?error=1");
   await db.insert(resources).values({ companyId, name, capacity });
   revalidatePath("/dashboard/resources");
@@ -32,10 +42,10 @@ export async function addResource(formData: FormData): Promise<void> {
 export async function updateResource(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const id = String(formData.get("id") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
-  const capacity = toInt(formData.get("capacity"), 1, 1);
+  const name = cleanText(formData.get("name"), MAX_NAME_LEN);
+  const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
   const active = formData.get("active") === "on";
-  if (!id || !name) redirect("/dashboard/resources?error=1");
+  if (!isUuid(id) || !name) redirect("/dashboard/resources?error=1");
   // Scoped by companyId so one company cannot edit another's resource.
   await db
     .update(resources)
@@ -48,11 +58,10 @@ export async function updateResource(formData: FormData): Promise<void> {
 
 export async function addOpeningHour(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
-  const dayOfWeek = toInt(formData.get("dayOfWeek"), 0, -1);
+  const dayOfWeek = parseBoundedInt(formData.get("dayOfWeek"), 0, 6, -1);
   const openTime = String(formData.get("openTime") ?? "");
   const closeTime = String(formData.get("closeTime") ?? "");
-  const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
-  if (dayOfWeek < 0 || dayOfWeek > 6 || !timeRe.test(openTime) || !timeRe.test(closeTime) || openTime >= closeTime) {
+  if (dayOfWeek < 0 || dayOfWeek > 6 || !isTimeStr(openTime) || !isTimeStr(closeTime) || openTime >= closeTime) {
     redirect("/dashboard/hours?error=1");
   }
   await db.insert(openingHours).values({ companyId, dayOfWeek, openTime, closeTime });
@@ -62,6 +71,7 @@ export async function addOpeningHour(formData: FormData): Promise<void> {
 export async function deleteOpeningHour(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/dashboard/hours?error=1");
   await db.delete(openingHours).where(and(eq(openingHours.id, id), eq(openingHours.companyId, companyId)));
   revalidatePath("/dashboard/hours");
 }
@@ -71,15 +81,18 @@ export async function deleteOpeningHour(formData: FormData): Promise<void> {
 export async function addClosure(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const date = String(formData.get("date") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim() || null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect("/dashboard/hours?error=1");
-  await db.insert(closures).values({ companyId, date, reason });
+  const reason = cleanText(formData.get("reason"), MAX_REASON_LEN) || null;
+  if (!isDateStr(date)) redirect("/dashboard/hours?error=1");
+  // Ignore a duplicate closure for the same day instead of erroring on the
+  // (company_id, date) unique constraint.
+  await db.insert(closures).values({ companyId, date, reason }).onConflictDoNothing();
   revalidatePath("/dashboard/hours");
 }
 
 export async function deleteClosure(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/dashboard/hours?error=1");
   await db.delete(closures).where(and(eq(closures.id, id), eq(closures.companyId, companyId)));
   revalidatePath("/dashboard/hours");
 }
@@ -89,23 +102,98 @@ export async function deleteClosure(formData: FormData): Promise<void> {
 export async function staffCancelBooking(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const id = String(formData.get("id") ?? "");
-  // Scoped by companyId so staff can only cancel their own company's bookings.
+  if (!isUuid(id)) redirect("/dashboard/bookings?error=1");
+
+  const [booking] = await db
+    .select({
+      token: bookings.token,
+      customerName: bookings.customerName,
+      email: bookings.email,
+      partySize: bookings.partySize,
+      startAt: bookings.startAt,
+      resourceName: resources.name,
+    })
+    .from(bookings)
+    .innerJoin(resources, eq(bookings.resourceId, resources.id))
+    .where(and(eq(bookings.id, id), eq(bookings.companyId, companyId)))
+    .limit(1);
+
+  if (!booking) redirect("/dashboard/bookings?error=1");
+
   await db
     .update(bookings)
     .set({ status: "cancelled" })
     .where(and(eq(bookings.id, id), eq(bookings.companyId, companyId)));
+
   revalidatePath("/dashboard/bookings");
+
+  const [company] = await db
+    .select({ name: companies.name, timezone: companies.timezone, logoUrl: companies.logoUrl, primaryColor: companies.primaryColor, senderName: companies.senderName, contactInfo: companies.contactInfo })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+
+  if (!company) return;
+
+  const owners = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.companyId, companyId))
+    .limit(1);
+
+  await sendCustomerCancellation({
+    to: booking.email,
+    customerName: booking.customerName,
+    companyName: company.name,
+    senderName: company.senderName || company.name,
+    logoUrl: company.logoUrl,
+    primaryColor: company.primaryColor,
+    contactInfo: company.contactInfo,
+    timezone: company.timezone,
+    startAt: booking.startAt,
+    partySize: booking.partySize,
+  });
+
+  if (owners.length > 0) {
+    await sendOwnerCancellation({
+      ownerEmail: owners[0].email,
+      customerName: booking.customerName,
+      customerEmail: booking.email,
+      companyName: company.name,
+      senderName: company.senderName || company.name,
+      logoUrl: company.logoUrl,
+      primaryColor: company.primaryColor,
+      contactInfo: company.contactInfo,
+      timezone: company.timezone,
+      startAt: booking.startAt,
+      partySize: booking.partySize,
+      resourceName: booking.resourceName,
+    });
+  }
 }
 
 // --- Branding ---
 
 export async function updateBranding(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
-  const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
-  const primaryColor = String(formData.get("primaryColor") ?? "").trim() || "#111827";
+  const rawLogo = String(formData.get("logoUrl") ?? "").trim();
+  const rawColor = String(formData.get("primaryColor") ?? "").trim();
+  const rawWelcome = String(formData.get("welcomeText") ?? "").trim();
+
+  // Only persist a logo URL that is a real http(s) link — the value is rendered
+  // as an <img src> and echoed into the page, so reject javascript:/data: etc.
+  const logoUrl = rawLogo && isHttpUrl(rawLogo) ? rawLogo : null;
+  // primaryColor is interpolated into inline styles / CSS custom properties, so it
+  // must be a strict hex color, never arbitrary CSS.
+  const primaryColor = isHexColor(rawColor) ? rawColor : DEFAULT_COLOR;
+  const welcomeText = rawWelcome || null;
+
+  if (rawLogo && !logoUrl) redirect("/dashboard/settings?error=logo");
+  if (rawColor && primaryColor !== rawColor) redirect("/dashboard/settings?error=color");
+
   await db
     .update(companies)
-    .set({ logoUrl, primaryColor })
+    .set({ logoUrl, primaryColor, welcomeText })
     .where(eq(companies.id, companyId));
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");

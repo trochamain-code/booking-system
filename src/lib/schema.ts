@@ -9,64 +9,102 @@ import {
   date,
   timestamp,
   uniqueIndex,
+  index,
+  check,
 } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", ["super_admin", "owner", "staff"]);
 
-export const companies = pgTable("companies", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  slug: text("slug").notNull().unique(),
-  name: text("name").notNull(),
-  timezone: text("timezone").notNull().default("UTC"),
-  logoUrl: text("logo_url"),
-  primaryColor: text("primary_color").notNull().default("#111827"),
-  slotIntervalMin: integer("slot_interval_min").notNull().default(15),
-  defaultDurationMin: integer("default_duration_min").notNull().default(90),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const companies = pgTable(
+  "companies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    timezone: text("timezone").notNull().default("UTC"),
+    logoUrl: text("logo_url"),
+    primaryColor: text("primary_color").notNull().default("#111827"),
+    welcomeText: text("welcome_text"),
+    senderName: text("sender_name").notNull().default(""),
+    contactInfo: text("contact_info"),
+    slotIntervalMin: integer("slot_interval_min").notNull().default(15),
+    defaultDurationMin: integer("default_duration_min").notNull().default(90),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("companies_slot_interval_pos", sql`${t.slotIntervalMin} > 0`),
+    check("companies_default_duration_pos", sql`${t.defaultDurationMin} > 0`),
+  ],
+);
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  role: roleEnum("role").notNull(),
-  // null for super_admin; set for owner/staff
-  companyId: uuid("company_id").references(() => companies.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    role: roleEnum("role").notNull(),
+    // null for super_admin; set for owner/staff
+    companyId: uuid("company_id").references(() => companies.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("users_company_idx").on(t.companyId)],
+);
 
-export const resources = pgTable("resources", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  capacity: integer("capacity").notNull().default(1),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const resources = pgTable(
+  "resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    capacity: integer("capacity").notNull().default(1),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("resources_company_idx").on(t.companyId),
+    check("resources_capacity_pos", sql`${t.capacity} > 0`),
+  ],
+);
 
 // Weekly opening hours as wall-clock "HH:MM" in the company timezone.
 // Multiple rows per weekday = split shifts (e.g. 11:00-15:00 and 18:00-23:00).
-export const openingHours = pgTable("opening_hours", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday .. 6=Saturday
-  openTime: text("open_time").notNull(), // "HH:MM"
-  closeTime: text("close_time").notNull(), // "HH:MM"
-});
+export const openingHours = pgTable(
+  "opening_hours",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday .. 6=Saturday
+    openTime: text("open_time").notNull(), // "HH:MM"
+    closeTime: text("close_time").notNull(), // "HH:MM"
+  },
+  (t) => [
+    index("opening_hours_company_idx").on(t.companyId),
+    check("opening_hours_dow_range", sql`${t.dayOfWeek} >= 0 AND ${t.dayOfWeek} <= 6`),
+  ],
+);
 
 // One-off closed days (holidays / maintenance) that block all slots.
-export const closures = pgTable("closures", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  date: date("date").notNull(), // "YYYY-MM-DD"
-  reason: text("reason"),
-});
+export const closures = pgTable(
+  "closures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    date: date("date").notNull(), // "YYYY-MM-DD"
+    reason: text("reason"),
+  },
+  (t) => [
+    index("closures_company_idx").on(t.companyId),
+    // One closure per company per day; addClosure relies on this for onConflictDoNothing.
+    uniqueIndex("closures_company_date_uniq").on(t.companyId, t.date),
+  ],
+);
 
 export const bookingStatusEnum = pgEnum("booking_status", ["confirmed", "cancelled"]);
 
@@ -92,9 +130,18 @@ export const bookings = pgTable(
   },
   (t) => [
     // Backstop against the exact-same-slot race; cancelled rows drop out so the slot frees.
+    // (The no_overlap_confirmed EXCLUDE constraint added in migration 0003 is the real
+    // guard against overlapping-but-offset bookings — see that migration.)
     uniqueIndex("uniq_confirmed_slot")
       .on(t.resourceId, t.startAt)
       .where(sql`${t.status} = 'confirmed'`),
+    // Dashboard & availability read bookings by company within a day window.
+    index("bookings_company_start_idx").on(t.companyId, t.startAt),
+    index("bookings_company_status_start_idx").on(t.companyId, t.status, t.startAt),
+    // FK lookups + the overlap scan join on resource.
+    index("bookings_resource_start_idx").on(t.resourceId, t.startAt),
+    check("bookings_party_size_pos", sql`${t.partySize} > 0`),
+    check("bookings_duration_pos", sql`${t.durationMin} > 0`),
   ],
 );
 

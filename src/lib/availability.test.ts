@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { availableSlots, type AvailabilityInput } from "./availability";
+import { availableSlots, dayRangeUtc, weekday, type AvailabilityInput } from "./availability";
 
 const DATE = "2026-07-10"; // a Friday
 const DOW = new Date(`${DATE}T00:00:00Z`).getUTCDay();
@@ -96,4 +96,31 @@ test("resolves wall-clock times against the company timezone (EDT = UTC-4 in Jul
   const input = base({ timezone: "America/New_York" });
   // 18:00 New York on 2026-07-10 == 22:00 UTC
   assert.equal(availableSlots(input)[0].startAt, "2026-07-10T22:00:00.000Z");
+});
+
+test("nowMs excludes slots at or before the current instant (no past bookings)", () => {
+  // Slots are 18:00, 19:00, 20:00 UTC. With now = 19:30 UTC only 20:00 survives.
+  const input = base({ nowMs: Date.parse("2026-07-10T19:30:00Z") });
+  assert.deepEqual(times(input), ["20:00"]);
+});
+
+test("nowMs in the past keeps every slot", () => {
+  const input = base({ nowMs: Date.parse("2000-01-01T00:00:00Z") });
+  assert.deepEqual(times(input), ["18:00", "19:00", "20:00"]);
+});
+
+test("dayRangeUtc spans midnight-to-midnight in the given timezone", () => {
+  const utc = dayRangeUtc("2026-07-10", "UTC");
+  assert.equal(utc.start.toISOString(), "2026-07-10T00:00:00.000Z");
+  assert.equal(utc.end.toISOString(), "2026-07-11T00:00:00.000Z");
+
+  // New York is UTC-4 in July, so its calendar day starts at 04:00 UTC.
+  const ny = dayRangeUtc("2026-07-10", "America/New_York");
+  assert.equal(ny.start.toISOString(), "2026-07-10T04:00:00.000Z");
+  assert.equal(ny.end.toISOString(), "2026-07-11T04:00:00.000Z");
+});
+
+test("weekday returns the calendar day-of-week (2026-07-10 is a Friday)", () => {
+  assert.equal(weekday("2026-07-10"), 5);
+  assert.equal(weekday("2026-07-12"), 0); // Sunday
 });

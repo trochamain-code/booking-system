@@ -13,11 +13,16 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Cache-mount the pnpm store so retries reuse already-downloaded packages;
 # bump fetch timeout/retries to ride out slow registry pulls.
+# strict-dep-builds=false stops pnpm 11 from treating its dependency build-approval
+# gate (esbuild/sharp/etc.) as a fatal error — we rebuild esbuild explicitly below.
+# Unlike the old `|| true`, this does NOT mask real install failures (bad lockfile,
+# network error, missing package), so a broken install still fails the build.
 RUN --mount=type=cache,target=/pnpm/store \
     pnpm config set store-dir /pnpm/store && \
     pnpm config set fetch-timeout 600000 && \
     pnpm config set fetch-retries 5 && \
-    { pnpm install --frozen-lockfile || true; } && \
+    pnpm config set strict-dep-builds false && \
+    pnpm install --frozen-lockfile && \
     pnpm rebuild esbuild
 
 # --- build the Next app ---
@@ -32,6 +37,14 @@ RUN pnpm build
 # --- runtime: migrate, seed the super-admin, then serve ---
 FROM base AS runner
 ENV NODE_ENV=production
-COPY --from=build /app ./
+# Run as the unprivileged `node` user shipped in the base image; own the app dir so
+# Next can write its runtime cache.
+COPY --from=build --chown=node:node /app ./
+USER node
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm db:migrate && pnpm seed && pnpm start"]
+# Probe the DB-backed health endpoint; container is unhealthy if the app can't serve.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+# Invoke the local binaries directly — no pnpm/corepack needed at runtime, which
+# keeps the non-root user from having to resolve a global package manager.
+CMD ["sh", "-c", "node_modules/.bin/drizzle-kit migrate && node_modules/.bin/tsx scripts/seed.ts && node_modules/.bin/next start"]

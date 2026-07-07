@@ -1,3 +1,8 @@
+allowBuilds:
+  esbuild: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+# Packages whose install/build scripts pnpm is allowed to run.
 onlyBuiltDependencies:
   - esbuild
   - sharp

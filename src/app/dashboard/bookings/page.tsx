@@ -4,6 +4,7 @@ import { bookings, resources } from "@/lib/schema";
 import { dayRangeUtc } from "@/lib/availability";
 import { staffCancelBooking } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
+import { isDateStr } from "@/lib/validation";
 
 export default async function BookingsPage({
   searchParams,
@@ -19,7 +20,7 @@ export default async function BookingsPage({
     day: "2-digit",
   }).format(new Date());
   const sp = await searchParams;
-  const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
+  const date = sp.date && isDateStr(sp.date) ? sp.date : today;
 
   const { start, end } = dayRangeUtc(date, company.timezone);
   const rows = await db

@@ -13,6 +13,7 @@ export type AvailabilityInput = {
   hours: EngineHour[]; // all weekly ranges; filtered here by weekday
   closures: string[]; // YYYY-MM-DD dates that are fully closed
   bookings: EngineBooking[]; // confirmed bookings that could overlap this date
+  nowMs?: number; // if set, slots starting at/before this instant are excluded (no past bookings)
 };
 
 function toMinutes(hhmm: string): number {
@@ -96,6 +97,9 @@ export function availableSlots(input: AvailabilityInput): Slot[] {
       const startAt = zonedWallTimeToUtc(date, t, timezone);
       const startMs = startAt.getTime();
       const endMs = startMs + durationMin * 60_000;
+
+      // Never offer (or accept, via the write-time re-check) a slot in the past.
+      if (input.nowMs !== undefined && startMs <= input.nowMs) continue;
 
       const free = fitting.find(
         (r) =>
