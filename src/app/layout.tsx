@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Karla, Geist_Mono } from "next/font/google";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import "dayjs/locale/es";
+import { MuiProvider } from "./mui-provider";
 import "./globals.css";
 
 const karla = Karla({
@@ -37,9 +35,7 @@ export default function RootLayout({
       className={`${karla.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-          {children}
-        </LocalizationProvider>
+        <MuiProvider>{children}</MuiProvider>
       </body>
     </html>
   );
