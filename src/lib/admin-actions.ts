@@ -20,6 +20,7 @@ import {
   isUuid,
   parseBoundedInt,
   MAX_NAME_LEN,
+  MAX_EMAIL_LEN,
   MAX_REASON_LEN,
   MAX_CAPACITY,
 } from "./validation";
@@ -266,4 +267,38 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
       resourceName: booking.resourceName,
     });
   }
+}
+
+// --- Owner ---
+
+export async function adminUpdateOwner(formData: FormData): Promise<void> {
+  await requireRole("super_admin");
+  const companyId = String(formData.get("companyId") ?? "");
+  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!companyId || !isValidEmail(email)) redirect(`/admin/companies/${companyId}?error=1`);
+
+  const owner = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
+    .limit(1);
+  if (owner.length === 0) redirect(`/admin/companies/${companyId}?error=1`);
+
+  // Check email isn't taken by another user
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.email, email), not(eq(users.id, owner[0].id))))
+    .limit(1);
+  if (existing) redirect(`/admin/companies/${companyId}?error=email`);
+
+  const updates: Record<string, string> = { email };
+  if (password.length >= 8) {
+    updates.passwordHash = await hashPassword(password);
+  }
+
+  await db.update(users).set(updates).where(eq(users.id, owner[0].id));
+  revalidatePath(`/admin/companies/${companyId}`);
 }
