@@ -1,15 +1,58 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookingByToken } from "@/lib/booking-data";
+import { confirmPayment } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
 
 export default async function ConfirmedPage({
+  params,
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string; session_id?: string }>;
 }) {
-  const { token } = await searchParams;
-  const booking = token ? await getBookingByToken(token) : undefined;
+  const { slug } = await params;
+  const { token, session_id: sessionId } = await searchParams;
+
+  if (!token) notFound();
+
+  let booking = token ? await getBookingByToken(token) : undefined;
+
+  let paymentConfirmed = false;
+  if (!booking && sessionId && token) {
+    const result = await confirmPayment(sessionId, token, slug);
+    if (result.ok) {
+      booking = { ...result.booking, slug };
+      paymentConfirmed = true;
+    } else {
+      // The customer may have just PAID — never show a bare 404 here.
+      const messages: Record<string, string> = {
+        slot_taken: result.refunded
+          ? "El horario elegido dejó de estar disponible mientras completabas el pago. Te hemos devuelto el importe automáticamente — no se te cobrará nada."
+          : "El horario elegido dejó de estar disponible mientras completabas el pago. No hemos podido procesar la devolución automáticamente: contacta con el establecimiento para que te devuelvan el importe.",
+        not_paid: "El pago no se ha completado, así que la reserva no se ha creado. Puedes intentarlo de nuevo.",
+        rate: "Demasiadas solicitudes. Espera un momento y recarga esta página.",
+      };
+      const message =
+        messages[result.error] ??
+        "No hemos podido verificar el pago en este momento. Recarga esta página en unos segundos; si el problema persiste, contacta con el establecimiento.";
+      return (
+        <main className="mx-auto max-w-lg p-4 sm:p-6">
+          <div className="card overflow-hidden">
+            <div style={{ height: "4px", backgroundColor: "var(--color-subtle)" }} />
+            <div className="p-8 text-center">
+              <h1 className="text-2xl font-semibold text-ink">No se pudo completar la reserva</h1>
+              <p className="mt-4 text-sm text-muted">{message}</p>
+              <Link href={`/embed/${slug}`} className="mt-6 inline-block text-sm text-muted underline underline-offset-4 hover:text-ink">
+                Volver a las reservas
+              </Link>
+            </div>
+          </div>
+        </main>
+      );
+    }
+  }
+
   if (!booking) notFound();
 
   const when = new Intl.DateTimeFormat("es-ES", {
@@ -60,7 +103,7 @@ export default async function ConfirmedPage({
             )}
           </div>
           <h1 className="text-2xl font-semibold text-ink">
-            {cancelled ? "Reserva cancelada" : "¡Reserva confirmada!"}
+            {cancelled ? "Reserva cancelada" : paymentConfirmed ? "¡Pago confirmado!" : "¡Reserva confirmada!"}
           </h1>
           <p className="mt-1 text-sm text-muted">{booking.welcomeText || booking.companyName}</p>
           <p className="mt-2 text-ink first-letter:uppercase">{when}</p>

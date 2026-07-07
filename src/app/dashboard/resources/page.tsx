@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { resources } from "@/lib/schema";
 import { addResource, updateResource } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
+import { formatEuros } from "@/lib/validation";
 
 export default async function ResourcesPage({
   searchParams,
@@ -22,13 +23,14 @@ export default async function ResourcesPage({
       <header>
         <h1 className="text-2xl font-semibold text-ink">Recursos</h1>
         <p className="mt-1 text-sm text-muted">
-          Mesas, sillas, pistas, salas… lo que se reserve. El aforo es cuántas personas admite.
+          Mesas, sillas, pistas, salas… lo que se reserve. El aforo es cuántas personas admite; deja el precio vacío
+          si la reserva es gratuita.
         </p>
       </header>
 
       {error && (
         <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
-          Revisa los datos: el nombre es obligatorio y el aforo debe ser un número válido.
+          Revisa los datos: el nombre es obligatorio y el precio debe ser un importe válido (p. ej. 12.50).
         </p>
       )}
 
@@ -49,6 +51,19 @@ export default async function ResourcesPage({
                   <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
                 </label>
                 <label className="flex items-center gap-2 text-sm text-muted">
+                  Precio (€)
+                  <input
+                    name="priceEuros"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    defaultValue={formatEuros(r.priceCents)}
+                    placeholder="Gratis"
+                    aria-label="Precio en euros"
+                    className="input w-24"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" name="active" defaultChecked={r.active} className="h-4 w-4 accent-[var(--color-primary)]" />
                   Activo
                 </label>
@@ -59,7 +74,7 @@ export default async function ResourcesPage({
         </ul>
       )}
 
-      <form action={addResource} className="card flex flex-wrap items-end gap-3 p-4">
+      <form action={addResource} data-tour="add-resource" className="card flex flex-wrap items-end gap-3 p-4">
         <div className="flex-1">
           <label className="label" htmlFor="new-resource-name">
             Nuevo recurso
@@ -71,6 +86,12 @@ export default async function ResourcesPage({
             Aforo
           </label>
           <input id="new-resource-capacity" name="capacity" type="number" min={1} defaultValue={2} className="input w-24" />
+        </div>
+        <div>
+          <label className="label" htmlFor="new-resource-price">
+            Precio (€)
+          </label>
+          <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
         </div>
         <button className="btn btn-primary">Añadir recurso</button>
       </form>

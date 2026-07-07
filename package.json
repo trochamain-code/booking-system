@@ -20,12 +20,14 @@
     "@mui/material": "^9.2.0",
     "@mui/x-date-pickers": "^9.8.0",
     "dayjs": "^1.11.21",
+    "driver.js": "^1.6.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.10",
     "nodemailer": "^9.0.3",
     "postgres": "^3.4.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "stripe": "^22.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

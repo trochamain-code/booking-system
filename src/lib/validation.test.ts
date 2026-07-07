@@ -9,6 +9,8 @@ import {
   isValidTimeZone,
   isUuid,
   parseBoundedInt,
+  parsePriceEuros,
+  formatEuros,
   cleanText,
 } from "./validation";
 
@@ -70,6 +72,25 @@ test("parseBoundedInt clamps and falls back", () => {
   assert.equal(parseBoundedInt("999", 1, 10, 2), 10); // clamp to max
   assert.equal(parseBoundedInt("abc", 1, 10, 2), 2); // fallback
   assert.equal(parseBoundedInt(null, 1, 10, 2), 2);
+});
+
+test("parsePriceEuros converts euros to cents", () => {
+  assert.equal(parsePriceEuros("12"), 1200);
+  assert.equal(parsePriceEuros("12.50"), 1250);
+  assert.equal(parsePriceEuros("12,50"), 1250); // comma decimal
+  assert.equal(parsePriceEuros("0.1"), 10);
+  assert.equal(parsePriceEuros(""), null); // empty → free
+  assert.equal(parsePriceEuros(null), null);
+  assert.equal(parsePriceEuros("-5"), undefined);
+  assert.equal(parsePriceEuros("12.345"), undefined); // too many decimals
+  assert.equal(parsePriceEuros("abc"), undefined);
+  assert.equal(parsePriceEuros("999999"), undefined); // over the cap
+});
+
+test("formatEuros renders cents for form defaults", () => {
+  assert.equal(formatEuros(1250), "12.50");
+  assert.equal(formatEuros(0), "0.00");
+  assert.equal(formatEuros(null), "");
 });
 
 test("cleanText trims and caps length", () => {

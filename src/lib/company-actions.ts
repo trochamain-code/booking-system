@@ -15,6 +15,7 @@ import {
   isTimeStr,
   isUuid,
   parseBoundedInt,
+  parsePriceEuros,
   MAX_CAPACITY,
   MAX_NAME_LEN,
   MAX_REASON_LEN,
@@ -34,8 +35,9 @@ export async function addResource(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
   const name = cleanText(formData.get("name"), MAX_NAME_LEN);
   const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
-  if (!name) redirect("/dashboard/resources?error=1");
-  await db.insert(resources).values({ companyId, name, capacity });
+  const priceCents = parsePriceEuros(formData.get("priceEuros"));
+  if (!name || priceCents === undefined) redirect("/dashboard/resources?error=1");
+  await db.insert(resources).values({ companyId, name, capacity, priceCents });
   revalidatePath("/dashboard/resources");
 }
 
@@ -45,11 +47,12 @@ export async function updateResource(formData: FormData): Promise<void> {
   const name = cleanText(formData.get("name"), MAX_NAME_LEN);
   const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
   const active = formData.get("active") === "on";
-  if (!isUuid(id) || !name) redirect("/dashboard/resources?error=1");
+  const priceCents = parsePriceEuros(formData.get("priceEuros"));
+  if (!isUuid(id) || !name || priceCents === undefined) redirect("/dashboard/resources?error=1");
   // Scoped by companyId so one company cannot edit another's resource.
   await db
     .update(resources)
-    .set({ name, capacity, active })
+    .set({ name, capacity, active, priceCents })
     .where(and(eq(resources.id, id), eq(resources.companyId, companyId)));
   revalidatePath("/dashboard/resources");
 }
@@ -138,7 +141,7 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
   const owners = await db
     .select({ email: users.email })
     .from(users)
-    .where(eq(users.companyId, companyId))
+    .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
     .limit(1);
 
   await sendCustomerCancellation({
@@ -179,21 +182,21 @@ export async function updateBranding(formData: FormData): Promise<void> {
   const rawLogo = String(formData.get("logoUrl") ?? "").trim();
   const rawColor = String(formData.get("primaryColor") ?? "").trim();
   const rawWelcome = String(formData.get("welcomeText") ?? "").trim();
+  const rawSender = String(formData.get("senderName") ?? "").trim();
+  const rawContact = String(formData.get("contactInfo") ?? "").trim();
 
-  // Only persist a logo URL that is a real http(s) link — the value is rendered
-  // as an <img src> and echoed into the page, so reject javascript:/data: etc.
   const logoUrl = rawLogo && isHttpUrl(rawLogo) ? rawLogo : null;
-  // primaryColor is interpolated into inline styles / CSS custom properties, so it
-  // must be a strict hex color, never arbitrary CSS.
   const primaryColor = isHexColor(rawColor) ? rawColor : DEFAULT_COLOR;
   const welcomeText = rawWelcome || null;
+  const senderName = rawSender || "";
+  const contactInfo = rawContact || null;
 
   if (rawLogo && !logoUrl) redirect("/dashboard/settings?error=logo");
   if (rawColor && primaryColor !== rawColor) redirect("/dashboard/settings?error=color");
 
   await db
     .update(companies)
-    .set({ logoUrl, primaryColor, welcomeText })
+    .set({ logoUrl, primaryColor, welcomeText, senderName, contactInfo })
     .where(eq(companies.id, companyId));
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");

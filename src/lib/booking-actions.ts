@@ -1,145 +1,24 @@
 "use server";
 
-import crypto from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { bookings, users, resources, companies } from "./schema";
-import { getCompanyBySlug, getAvailability } from "./booking-data";
-import { sendCustomerConfirmation, sendOwnerNotification, sendCustomerCancellation, sendOwnerCancellation } from "./email";
+import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
 import { rateLimit, clientIp } from "./rate-limit";
-import { hasPgCode, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION } from "./pg-error";
-import {
-  cleanText,
-  isValidEmail,
-  isDateStr,
-  MAX_NAME_LEN,
-  MAX_EMAIL_LEN,
-  MAX_PHONE_LEN,
-  MAX_PARTY_SIZE,
-} from "./validation";
 
-// The unique index and the no_overlap_confirmed exclusion constraint guard the
-// "one confirmed booking per resource-time" invariant. A violation of either means
-// the slot was taken between our availability re-check and this insert.
-function isSlotConflict(err: unknown): boolean {
-  return hasPgCode(err, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION);
-}
-
-export async function createBooking(formData: FormData): Promise<void> {
-  const ip = await clientIp();
-  const limit = rateLimit(`book:ip:${ip}`, 20, 60_000);
-  if (!limit.ok) redirect(`/embed/${String(formData.get("slug") ?? "")}?error=rate`);
-
-  const slug = String(formData.get("slug") ?? "");
-  const date = String(formData.get("date") ?? "");
-  const startAtIso = String(formData.get("startAt") ?? "");
-  const partySizeRaw = parseInt(String(formData.get("partySize") ?? ""), 10);
-  const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
-  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase();
-  const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN) || null;
-
-  const partySize = partySizeRaw;
-  const bookHref = `/embed/${slug}/book?date=${date}&party=${partySize}&startAt=${encodeURIComponent(startAtIso)}`;
-
-  const company = await getCompanyBySlug(slug);
-  if (!company) redirect(`/embed/${slug}`);
-
-  const validParty = Number.isInteger(partySize) && partySize >= 1 && partySize <= MAX_PARTY_SIZE;
-  if (!customerName || !isValidEmail(email) || !validParty || !isDateStr(date) || !startAtIso) {
-    redirect(`${bookHref}&error=invalid`);
-  }
-
-  // Re-check availability at write time: the engine re-derives the free resource
-  // (never trust the client's) and drops past/taken slots. A slot that isn't in
-  // this fresh list is gone — redirect the customer back to pick another.
-  const slots = await getAvailability(company, date, partySize);
-  const slot = slots.find((s) => s.startAt === startAtIso);
-  if (!slot) redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1`);
-
-  const token = crypto.randomBytes(24).toString("base64url");
-  try {
-    await db.insert(bookings).values({
-      companyId: company.id,
-      resourceId: slot.resourceId,
-      customerName,
-      email,
-      phone,
-      partySize,
-      startAt: new Date(slot.startAt),
-      durationMin: company.defaultDurationMin,
-      token,
-    });
-  } catch (err) {
-    // The DB no-overlap/unique constraint is the source of truth under concurrency:
-    // a conflict means someone grabbed this resource-time first. Any OTHER error is
-    // a real failure and must not be silently reported as "slot taken".
-    if (isSlotConflict(err)) {
-      redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1`);
-    }
-    throw err;
-  }
-
-  const [resource] = await db
-    .select({ name: resources.name })
-    .from(resources)
-    .where(eq(resources.id, slot.resourceId))
-    .limit(1);
-
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const cancelUrl = `${appUrl}/cancel/${token}`;
-
-  await sendCustomerConfirmation({
-    to: email,
-    customerName,
-    companyName: company.name,
-    senderName: company.senderName || company.name,
-    logoUrl: company.logoUrl,
-    primaryColor: company.primaryColor,
-    contactInfo: company.contactInfo,
-    timezone: company.timezone,
-    startAt: new Date(slot.startAt),
-    partySize,
-    resourceName: resource?.name ?? "Sin especificar",
-    cancelUrl,
-  });
-
-  const owners = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.companyId, company.id))
-    .limit(1);
-
-  if (owners.length > 0) {
-    await sendOwnerNotification({
-      ownerEmail: owners[0].email,
-      customerName,
-      customerEmail: email,
-      customerPhone: phone,
-      companyName: company.name,
-      senderName: company.senderName || company.name,
-      logoUrl: company.logoUrl,
-      primaryColor: company.primaryColor,
-      contactInfo: company.contactInfo,
-      timezone: company.timezone,
-      startAt: new Date(slot.startAt),
-      partySize,
-      resourceName: resource?.name ?? "Sin especificar",
-      cancelUrl,
-    });
-  }
-
-  redirect(`/embed/${slug}/confirmed?token=${token}`);
-}
+// Booking creation lives in stripe-actions.ts (createBookingCheckout), which
+// handles both the free path and the Stripe Checkout path.
 
 export async function cancelBooking(formData: FormData): Promise<void> {
   const token = String(formData.get("token") ?? "");
+  if (!token) redirect("/");
+
   const ip = await clientIp();
   // Tokens are unguessable, but throttle so the endpoint can't be hammered.
+  // A throttled request must NOT pretend the booking was cancelled.
   const limit = rateLimit(`cancel:ip:${ip}`, 30, 60_000);
-  if (!limit.ok || !token) {
-    redirect(`/cancel/${token}?done=1`);
-  }
+  if (!limit.ok) redirect(`/cancel/${token}?error=rate`);
 
   const [booking] = await db
     .select({
@@ -168,7 +47,14 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     redirect(`/cancel/${token}?done=1`);
   }
 
-  await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.token, token));
+  // Status predicate makes the cancel atomic: a concurrent double-submit flips
+  // zero rows on the second run, so cancellation emails go out exactly once.
+  const cancelled = await db
+    .update(bookings)
+    .set({ status: "cancelled" })
+    .where(and(eq(bookings.token, token), eq(bookings.status, "confirmed")))
+    .returning({ id: bookings.id });
+  if (cancelled.length === 0) redirect(`/cancel/${token}?done=1`);
 
   await sendCustomerCancellation({
     to: booking.email,
@@ -186,7 +72,7 @@ export async function cancelBooking(formData: FormData): Promise<void> {
   const owners = await db
     .select({ email: users.email })
     .from(users)
-    .where(eq(users.companyId, booking.companyId))
+    .where(and(eq(users.companyId, booking.companyId), eq(users.role, "owner")))
     .limit(1);
 
   if (owners.length > 0) {

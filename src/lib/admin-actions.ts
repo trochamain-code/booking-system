@@ -19,6 +19,7 @@ import {
   isTimeStr,
   isUuid,
   parseBoundedInt,
+  parsePriceEuros,
   MAX_NAME_LEN,
   MAX_EMAIL_LEN,
   MAX_REASON_LEN,
@@ -88,7 +89,7 @@ export async function updateCompany(formData: FormData): Promise<void> {
   const rawSender = String(formData.get("senderName") ?? "").trim();
   const rawContact = String(formData.get("contactInfo") ?? "").trim();
 
-  if (!name || !slug || !isValidTimeZone(timezone)) redirect("/admin?error=invalid");
+  if (!isUuid(id) || !name || !slug || !isValidTimeZone(timezone)) redirect("/admin?error=invalid");
 
   const primaryColor = isHexColor(rawColor) ? rawColor : "#111827";
   const logoUrl = rawLogo && isHttpUrl(rawLogo) ? rawLogo : null;
@@ -108,17 +109,67 @@ export async function updateCompany(formData: FormData): Promise<void> {
     .set({ name, slug, timezone, primaryColor, logoUrl, welcomeText, senderName, contactInfo })
     .where(eq(companies.id, id));
 
-  const redirectTo = String(formData.get("redirectTo") ?? "/admin");
+  // Relative paths only — this comes from a hidden form field, so an absolute
+  // URL here would be an open redirect.
+  const rawRedirect = String(formData.get("redirectTo") ?? "/admin");
+  const redirectTo = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/admin";
 
   revalidatePath("/admin");
   revalidatePath(`/admin/companies/${id}`);
   redirect(`${redirectTo}?updated=1`);
 }
 
+// Separate from updateCompany so the general company forms (which don't carry
+// Stripe fields) can never blank out saved keys, and vice versa.
+export async function updateCompanyStripe(formData: FormData): Promise<void> {
+  await requireRole("super_admin");
+
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/admin?error=invalid");
+  const back = `/admin/companies/${id}`;
+
+  const stripeEnabled = formData.get("stripeEnabled") === "on";
+  const clearKeys = formData.get("stripeClear") === "on";
+  const rawSecret = String(formData.get("stripeSecretKey") ?? "").trim();
+  const rawPub = String(formData.get("stripePublishableKey") ?? "").trim();
+
+  // sk_ = standard secret, rk_ = restricted key. Reject anything else early so a
+  // pasted publishable key (or garbage) fails here instead of at checkout time.
+  if (rawSecret && !/^(sk|rk)_(live|test)_/.test(rawSecret)) redirect(`${back}?error=stripe_secret`);
+  if (rawPub && !/^pk_(live|test)_/.test(rawPub)) redirect(`${back}?error=stripe_pub`);
+
+  const updates: Partial<typeof companies.$inferInsert> = { stripeEnabled };
+  if (clearKeys) {
+    updates.stripeSecretKey = null;
+    updates.stripePublishableKey = null;
+    updates.stripeEnabled = false;
+  } else {
+    // Empty inputs keep the stored keys — the secret is never echoed back into
+    // the form, so an untouched field must not overwrite it.
+    if (rawSecret) updates.stripeSecretKey = rawSecret;
+    if (rawPub) updates.stripePublishableKey = rawPub;
+  }
+
+  if (updates.stripeEnabled) {
+    const [row] = await db
+      .select({ stripeSecretKey: companies.stripeSecretKey })
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
+    if (!row) redirect("/admin?error=invalid");
+    if (!(updates.stripeSecretKey ?? row.stripeSecretKey)) redirect(`${back}?error=stripe_secret`);
+  }
+
+  await db.update(companies).set(updates).where(eq(companies.id, id));
+
+  revalidatePath(back);
+  redirect(`${back}?updated=1`);
+}
+
 export async function deleteCompany(formData: FormData): Promise<void> {
   await requireRole("super_admin");
   const id = String(formData.get("id") ?? "");
-  if (!id) redirect("/admin?error=invalid");
+  if (!isUuid(id)) redirect("/admin?error=invalid");
   await db.delete(companies).where(eq(companies.id, id));
   revalidatePath("/admin");
   redirect("/admin?deleted=1");
@@ -131,8 +182,11 @@ export async function adminAddResource(formData: FormData): Promise<void> {
   const companyId = String(formData.get("companyId") ?? "");
   const name = cleanText(formData.get("name"), MAX_NAME_LEN);
   const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
-  if (!companyId || !name) redirect(`/admin/companies/${companyId}?error=1`);
-  await db.insert(resources).values({ companyId, name, capacity });
+  const priceCents = parsePriceEuros(formData.get("priceEuros"));
+  if (!isUuid(companyId) || !name || priceCents === undefined) {
+    redirect(`/admin/companies/${companyId}?error=1`);
+  }
+  await db.insert(resources).values({ companyId, name, capacity, priceCents });
   revalidatePath(`/admin/companies/${companyId}`);
 }
 
@@ -143,10 +197,13 @@ export async function adminUpdateResource(formData: FormData): Promise<void> {
   const name = cleanText(formData.get("name"), MAX_NAME_LEN);
   const capacity = parseBoundedInt(formData.get("capacity"), 1, MAX_CAPACITY, 1);
   const active = formData.get("active") === "on";
-  if (!companyId || !isUuid(id) || !name) redirect(`/admin/companies/${companyId}?error=1`);
+  const priceCents = parsePriceEuros(formData.get("priceEuros"));
+  if (!companyId || !isUuid(id) || !name || priceCents === undefined) {
+    redirect(`/admin/companies/${companyId}?error=1`);
+  }
   await db
     .update(resources)
-    .set({ name, capacity, active })
+    .set({ name, capacity, active, priceCents })
     .where(and(eq(resources.id, id), eq(resources.companyId, companyId)));
   revalidatePath(`/admin/companies/${companyId}`);
 }
@@ -238,7 +295,7 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
   const owners = await db
     .select({ email: users.email })
     .from(users)
-    .where(eq(users.companyId, companyId))
+    .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
     .limit(1);
 
   await sendCustomerCancellation({
@@ -297,8 +354,13 @@ export async function adminUpdateOwner(formData: FormData): Promise<void> {
     .limit(1);
   if (existing) redirect(`/admin/companies/${companyId}?error=email`);
 
+  // A 1–7 char password must be an explicit error — silently updating only the
+  // email would leave the admin believing the password was changed.
+  if (password && (password.length < 8 || password.length > 200)) {
+    redirect(`/admin/companies/${companyId}?error=password`);
+  }
   const updates: Record<string, string> = { email };
-  if (password.length >= 8) {
+  if (password) {
     updates.passwordHash = await hashPassword(password);
   }
 

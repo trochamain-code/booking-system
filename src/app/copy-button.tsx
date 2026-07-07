@@ -14,7 +14,7 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
         setTimeout(() => setCopied(false), 2000);
       }}
     >
-      {copied ? "Copiado" : label}
+      {copied ? "Copiado ✓" : label}
     </button>
   );
 }

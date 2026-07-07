@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCompanyBySlug } from "@/lib/booking-data";
-import { createBooking } from "@/lib/booking-actions";
+import { createBookingCheckout } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
 
 export default async function BookPage({
@@ -72,11 +72,13 @@ export default async function BookPage({
         <div className="p-5 pt-0">
           {sp.error && (
             <p role="alert" className="mb-4 rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
-              Introduce tu nombre y un correo válido.
+              {sp.error === "payment"
+                ? "No se pudo iniciar el pago. Inténtalo de nuevo o contacta con el establecimiento."
+                : "Introduce tu nombre y un correo válido."}
             </p>
           )}
 
-          <form action={createBooking} className="space-y-4">
+          <form action={createBookingCheckout} className="space-y-4">
             <input type="hidden" name="slug" value={slug} />
             <input type="hidden" name="date" value={date} />
             <input type="hidden" name="startAt" value={startAt} />

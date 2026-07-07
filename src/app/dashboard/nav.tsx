@@ -14,7 +14,7 @@ const TABS = [
 export function DashboardNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto" aria-label="Secciones del panel">
+    <nav data-tour="nav" className="flex gap-1 overflow-x-auto" aria-label="Secciones del panel">
       {TABS.map((t) => {
         const active = t.href === "/dashboard" ? pathname === t.href : pathname.startsWith(t.href);
         return (

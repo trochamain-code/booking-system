@@ -6,6 +6,14 @@ import { staffCancelBooking } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { isDateStr } from "@/lib/validation";
 import { DatePickerField } from "@/app/date-picker-field";
+import Link from "next/link";
+
+/** Shift a YYYY-MM-DD date string by whole days. */
+function shiftDate(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function BookingsPage({
   searchParams,
@@ -60,10 +68,33 @@ export default async function BookingsPage({
             {heading} · {confirmedCount} confirmada{confirmedCount === 1 ? "" : "s"}
           </p>
         </div>
-        <form method="get" className="flex items-end gap-2">
-          <DatePickerField name="date" defaultValue={date} label="Fecha" />
-          <button className="btn btn-ghost">Ver</button>
-        </form>
+        <div data-tour="bookings-day" className="flex flex-wrap items-end gap-2">
+          <Link
+            href={`/dashboard/bookings?date=${shiftDate(date, -1)}`}
+            className="btn btn-ghost"
+            aria-label="Día anterior"
+          >
+            ←
+          </Link>
+          <Link
+            href={`/dashboard/bookings?date=${today}`}
+            className="btn btn-ghost"
+            aria-current={date === today ? "date" : undefined}
+          >
+            Hoy
+          </Link>
+          <Link
+            href={`/dashboard/bookings?date=${shiftDate(date, 1)}`}
+            className="btn btn-ghost"
+            aria-label="Día siguiente"
+          >
+            →
+          </Link>
+          <form method="get" className="flex items-end gap-2">
+            <DatePickerField name="date" defaultValue={date} label="Fecha" />
+            <button className="btn btn-ghost">Ver</button>
+          </form>
+        </div>
       </header>
 
       {rows.length === 0 ? (

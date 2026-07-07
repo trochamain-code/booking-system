@@ -8,10 +8,10 @@ export default async function CancelPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ done?: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
   const { token } = await params;
-  const { done } = await searchParams;
+  const { error } = await searchParams;
   const booking = await getBookingByToken(token);
   if (!booking) notFound();
 
@@ -24,7 +24,9 @@ export default async function CancelPage({
     minute: "2-digit",
   }).format(booking.startAt);
 
-  const cancelled = done || booking.status === "cancelled";
+  // Trust only the DB status — a hand-typed ?done=1 must not claim a booking
+  // was cancelled when it wasn't (e.g. after a rate-limited submit).
+  const cancelled = booking.status === "cancelled";
 
   return (
     <main className="mx-auto max-w-lg p-4 sm:p-6" style={{ ["--brand" as string]: booking.primaryColor, ["--brand-text" as string]: contrastText(booking.primaryColor) }}>
@@ -53,6 +55,12 @@ export default async function CancelPage({
           <p className="text-sm text-muted">
             {booking.companyName} · {booking.partySize} personas
           </p>
+
+          {!cancelled && error === "rate" && (
+            <p role="alert" className="mt-4 rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+              Demasiadas solicitudes. Espera un momento e inténtalo de nuevo — la reserva NO se ha cancelado.
+            </p>
+          )}
 
           {cancelled ? (
             <p className="mt-6 text-sm text-muted">Esta reserva ha sido cancelada.</p>

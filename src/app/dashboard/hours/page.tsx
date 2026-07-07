@@ -68,7 +68,7 @@ export default async function HoursPage({
           </ul>
         )}
 
-        <form action={addOpeningHour} className="card flex flex-wrap items-end gap-3 p-4">
+        <form action={addOpeningHour} data-tour="add-hours" className="card flex flex-wrap items-end gap-3 p-4">
           <div>
             <label className="label" htmlFor="dayOfWeek">
               Día
@@ -97,7 +97,7 @@ export default async function HoursPage({
         </form>
       </section>
 
-      <section className="space-y-5">
+      <section data-tour="closures" className="space-y-5">
         <header>
           <h2 className="text-lg font-semibold text-ink">Cierres</h2>
           <p className="mt-1 text-sm text-muted">Bloquea un día entero — festivos, eventos privados, mantenimiento.</p>

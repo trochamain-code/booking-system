@@ -88,6 +88,27 @@ export function parseBoundedInt(
   return n;
 }
 
+export const MAX_PRICE_CENTS = 9_999_999;
+
+/**
+ * Parse a price in euros ("12", "12.50", "12,50") into whole cents.
+ * Empty → null (free). Anything non-numeric, negative, with more than two
+ * decimals, or over the cap → undefined so the caller can reject.
+ */
+export function parsePriceEuros(v: FormDataEntryValue | null): number | null | undefined {
+  const raw = String(v ?? "").trim().replace(",", ".");
+  if (!raw) return null;
+  if (!/^\d{1,5}(\.\d{1,2})?$/.test(raw)) return undefined;
+  const cents = Math.round(parseFloat(raw) * 100);
+  return cents <= MAX_PRICE_CENTS ? cents : undefined;
+}
+
+/** Format whole cents as a euro string for form defaults ("12.50"); null → "". */
+export function formatEuros(cents: number | null): string {
+  if (cents === null) return "";
+  return (cents / 100).toFixed(2);
+}
+
 /** Trim and hard-cap a free-text field. */
 export function cleanText(v: FormDataEntryValue | null, maxLen: number): string {
   return String(v ?? "").trim().slice(0, maxLen);

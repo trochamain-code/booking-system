@@ -29,6 +29,9 @@ export const companies = pgTable(
     contactInfo: text("contact_info"),
     slotIntervalMin: integer("slot_interval_min").notNull().default(15),
     defaultDurationMin: integer("default_duration_min").notNull().default(90),
+    stripeEnabled: boolean("stripe_enabled").notNull().default(false),
+    stripeSecretKey: text("stripe_secret_key"),
+    stripePublishableKey: text("stripe_publishable_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -60,6 +63,7 @@ export const resources = pgTable(
       .references(() => companies.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     capacity: integer("capacity").notNull().default(1),
+    priceCents: integer("price_cents"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

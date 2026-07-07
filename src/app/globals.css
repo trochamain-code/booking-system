@@ -149,3 +149,69 @@
     color: #fff;
   }
 }
+
+/* Guided tour (driver.js) — match the app's warm card look. */
+.driver-popover.booking-tour {
+  border-radius: 1rem;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  padding: 1.25rem;
+  max-width: 22rem;
+  box-shadow: 0 10px 40px rgb(28 25 23 / 0.18);
+}
+.booking-tour .driver-popover-title {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.booking-tour .driver-popover-description {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+.booking-tour .driver-popover-progress-text {
+  font-size: 0.75rem;
+  color: var(--color-subtle);
+}
+.booking-tour .driver-popover-navigation-btns button {
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-shadow: none;
+  transition: background-color 150ms;
+}
+.booking-tour .driver-popover-navigation-btns button:hover {
+  background-color: var(--color-surface-2);
+}
+.booking-tour .driver-popover-navigation-btns button.driver-popover-next-btn {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.booking-tour .driver-popover-navigation-btns button.driver-popover-next-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+.booking-tour .driver-popover-close-btn {
+  color: var(--color-subtle);
+}
+.booking-tour .driver-popover-close-btn:hover {
+  color: var(--color-ink);
+}
+.booking-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--color-surface);
+}
+.booking-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--color-surface);
+}
+.booking-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--color-surface);
+}
+.booking-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--color-surface);
+}

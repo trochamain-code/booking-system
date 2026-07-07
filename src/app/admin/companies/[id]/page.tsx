@@ -6,6 +6,7 @@ import { companies, users, resources, openingHours, closures, bookings } from "@
 import { dayRangeUtc } from "@/lib/availability";
 import {
   updateCompany,
+  updateCompanyStripe,
   deleteCompany,
   adminAddResource,
   adminUpdateResource,
@@ -16,9 +17,9 @@ import {
   adminCancelBooking,
   adminUpdateOwner,
 } from "@/lib/admin-actions";
-import { isDateStr, COMMON_TZS } from "@/lib/validation";
+import { isDateStr, COMMON_TZS, formatEuros } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
-import { CopyButton } from "../../copy-button";
+import { CopyButton } from "@/app/copy-button";
 import { PasswordField } from "../../../password-field";
 import { DatePickerField } from "../../../date-picker-field";
 
@@ -205,6 +206,64 @@ export default async function AdminCompanyPage({
           </div>
         </section>
 
+        {/* Stripe */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-ink">Stripe</h2>
+          {error === "stripe_secret" && (
+            <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+              Clave secreta inválida o ausente. Debe empezar por sk_live_, sk_test_, rk_live_ o rk_test_ y es obligatoria para activar pagos.
+            </p>
+          )}
+          {error === "stripe_pub" && (
+            <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+              Clave publicable inválida. Debe empezar por pk_live_ o pk_test_.
+            </p>
+          )}
+          <form action={updateCompanyStripe} className="card grid gap-4 p-6 sm:grid-cols-2">
+            <input type="hidden" name="id" value={company.id} />
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-3">
+                <input type="checkbox" name="stripeEnabled" defaultChecked={company.stripeEnabled} className="h-5 w-5 accent-[var(--color-primary)]" />
+                <span className="text-sm font-medium text-ink">Activar pagos con Stripe</span>
+              </label>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="stripe-secret">Clave secreta (sk_live_... / sk_test_...)</label>
+              {/* Never echo the stored secret back into the page — empty means "keep the saved key". */}
+              <input
+                id="stripe-secret"
+                name="stripeSecretKey"
+                type="password"
+                autoComplete="off"
+                placeholder={company.stripeSecretKey ? "Guardada — dejar vacío para mantenerla" : "sk_live_..."}
+                className="input font-mono text-sm"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="stripe-pub">Clave publicable (pk_live_... / pk_test_...)</label>
+              <input
+                id="stripe-pub"
+                name="stripePublishableKey"
+                type="text"
+                autoComplete="off"
+                placeholder={company.stripePublishableKey ? "Guardada — dejar vacío para mantenerla" : "pk_live_..."}
+                className="input font-mono text-sm"
+              />
+            </div>
+            {(company.stripeSecretKey || company.stripePublishableKey) && (
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" name="stripeClear" className="h-4 w-4 accent-[var(--color-primary)]" />
+                  <span className="text-sm text-muted">Borrar las claves guardadas (desactiva los pagos)</span>
+                </label>
+              </div>
+            )}
+            <div className="sm:col-span-2">
+              <button className="btn btn-primary">Guardar Stripe</button>
+            </div>
+          </form>
+        </section>
+
         {/* Resources */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-ink">Recursos ({rows.length})</h2>
@@ -225,6 +284,10 @@ export default async function AdminCompanyPage({
                       <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
                     </label>
                     <label className="flex items-center gap-2 text-sm text-muted">
+                      Precio (€)
+                      <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio en euros" className="input w-24" />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-muted">
                       <input type="checkbox" name="active" defaultChecked={r.active} className="h-4 w-4 accent-[var(--color-primary)]" />
                       Activo
                     </label>
@@ -243,6 +306,10 @@ export default async function AdminCompanyPage({
             <div>
               <label className="label" htmlFor="new-resource-capacity">Aforo</label>
               <input id="new-resource-capacity" name="capacity" type="number" min={1} defaultValue={2} className="input w-24" />
+            </div>
+            <div>
+              <label className="label" htmlFor="new-resource-price">Precio (€)</label>
+              <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
             </div>
             <button className="btn btn-primary">Añadir recurso</button>
           </form>

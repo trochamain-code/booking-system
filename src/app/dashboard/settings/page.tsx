@@ -1,6 +1,7 @@
 import { updateBranding } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { contrastText } from "@/lib/color";
+import { CopyButton } from "@/app/copy-button";
 
 export default async function SettingsPage({
   searchParams,
@@ -29,7 +30,7 @@ export default async function SettingsPage({
           <p className="mt-1 text-sm text-muted">Configura la imagen de tu marca en emails y widget de reservas.</p>
         </header>
 
-        <form action={updateBranding} className="card space-y-5 p-6">
+        <form action={updateBranding} data-tour="branding" className="card space-y-5 p-6">
           {errorText && (
             <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
               {errorText}
@@ -194,7 +195,28 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-4">
+        <header>
+          <h2 className="text-lg font-semibold text-ink">Pagos con Stripe</h2>
+        </header>
+        <div className="card p-6">
+          {company.stripeEnabled ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-success">Stripe activado</p>
+              <p className="text-xs text-muted">
+                Los recursos con precio asignado requerirán pago al reservar.
+                Las claves de Stripe las configura el administrador del sistema.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              Stripe no está activado. Las reservas son gratuitas. Contacta con el administrador para activar pagos.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section data-tour="embed" className="space-y-3">
         <header>
           <h2 className="text-lg font-semibold text-ink">Incrustar en tu web</h2>
           <p className="mt-1 text-sm text-muted">Pega este fragmento donde quieras que aparezca el widget de reservas.</p>
@@ -206,6 +228,10 @@ export default async function SettingsPage({
           aria-label="Fragmento para incrustar"
           className="w-full resize-none rounded-xl border border-border bg-surface-2 p-3 font-mono text-xs text-ink"
         />
+        <div className="flex flex-wrap items-center gap-3">
+          <CopyButton text={snippet} label="Copiar código" />
+          <CopyButton text={widgetUrl} label="Copiar enlace directo" />
+        </div>
         <p className="text-sm text-muted">
           O enlaza directamente:{" "}
           <a href={widgetUrl} target="_blank" rel="noreferrer" className="link">

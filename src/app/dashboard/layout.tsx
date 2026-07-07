@@ -1,6 +1,7 @@
 import { logout } from "@/lib/actions";
 import { requireCompany } from "@/lib/company";
 import { DashboardNav } from "./nav";
+import { DashboardTour, TourButton } from "./tour";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { company } = await requireCompany();
@@ -22,15 +23,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <p className="truncate text-xs text-muted">{company.timezone}</p>
             </div>
           </div>
-          <form action={logout}>
-            <button className="text-sm text-muted transition hover:text-ink">Cerrar sesión</button>
-          </form>
+          <div className="flex shrink-0 items-center gap-3">
+            <TourButton />
+            <form action={logout}>
+              <button className="text-sm text-muted transition hover:text-ink">Cerrar sesión</button>
+            </form>
+          </div>
         </div>
         <div className="mx-auto max-w-5xl px-6 pb-2 pt-3">
           <DashboardNav />
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <DashboardTour />
     </div>
   );
 }
