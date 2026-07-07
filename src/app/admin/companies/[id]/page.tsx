@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-actions";
 import { isDateStr, COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
+import { CopyButton } from "../../copy-button";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -86,6 +87,9 @@ export default async function AdminCompanyPage({
   const fmtTime = (d: Date) =>
     new Intl.DateTimeFormat("es-ES", { timeZone: company.timezone, hour: "2-digit", minute: "2-digit" }).format(d);
 
+  const widgetUrl = `${process.env.APP_URL ?? "https://booking.host-ia.online"}/embed/${company.slug}`;
+  const snippet = `<iframe src="${widgetUrl}" width="100%" height="700" frameborder="0" style="border-radius:12px"></iframe>`;
+
   return (
     <div className="min-h-full">
       <header className="border-b border-border bg-surface">
@@ -150,6 +154,20 @@ export default async function AdminCompanyPage({
               <button className="btn btn-primary">Guardar cambios</button>
             </div>
           </form>
+        </section>
+
+        {/* Widget */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-ink">Widget de reservas</h2>
+          <div className="card flex flex-wrap items-center gap-4 p-6">
+            <a href={widgetUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+              Abrir widget
+            </a>
+            <CopyButton text={snippet} label="Copiar código" />
+            <p className="text-xs text-muted">
+              {widgetUrl}
+            </p>
+          </div>
         </section>
 
         {/* Resources */}
