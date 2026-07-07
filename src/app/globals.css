@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces — warm hospitality neutrals */
+  --color-canvas: #fbfaf6;
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f4ee;
+
+  /* Text */
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-subtle: #a8a29e;
+
+  /* Lines */
+  --color-border: #eae6dd;
+  --color-border-strong: #d8d2c6;
+
+  /* Primary — amber (dark ink sits on top for AA contrast) */
+  --color-primary: #f59e0b;
+  --color-primary-hover: #d97706;
+  --color-on-primary: #1c1917;
+
+  /* Secondary accent — reserved for links/info */
+  --color-accent: #2563eb;
+
+  /* Semantic */
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-warn: #b45309;
+  --color-warn-bg: #fffbeb;
+
+  --font-sans: var(--font-karla), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
+  /* Consistent, visible keyboard focus everywhere (a11y §1 focus-states). */
+  :focus-visible {
+    outline: 2px solid var(--color-primary-hover);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  /* Respect reduced-motion (a11y §7 reduced-motion). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-surface;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  .input,
+  .select {
+    @apply w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-ink shadow-sm transition placeholder:text-subtle;
+  }
+  .input:hover,
+  .select:hover {
+    border-color: var(--color-border-strong);
+  }
+  .input:focus,
+  .select:focus {
+    border-color: var(--color-primary);
+  }
+
+  /* min-height 44px meets touch-target-size (a11y §2). */
+  .btn {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-150;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply min-h-9 px-3 text-xs;
+  }
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-ghost {
+    @apply border border-border bg-surface text-ink;
+  }
+  .btn-ghost:hover {
+    background-color: var(--color-surface-2);
+  }
+  .btn-danger {
+    background-color: var(--color-danger);
+    color: #fff;
+  }
+  .btn-danger:hover {
+    opacity: 0.9;
+  }
+
+  .link {
+    color: var(--color-accent);
+    @apply underline-offset-4 transition hover:underline;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Tenant-branded controls — colour comes from --brand set on an ancestor.
+     ponytail: white text on brand; add a luminance check if a tenant picks a pale brand. */
+  .btn-brand {
+    background-color: var(--brand);
+    color: #fff;
+  }
+  .btn-brand:hover {
+    opacity: 0.92;
+  }
+  .chip {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-4 text-sm font-semibold transition duration-150;
+    border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    color: var(--brand);
+  }
+  .chip:hover {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+  }
+}
