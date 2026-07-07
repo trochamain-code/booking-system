@@ -28,7 +28,7 @@ export default async function AdminCompanyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; date?: string }>;
+  searchParams: Promise<{ error?: string; updated?: string; date?: string }>;
 }) {
   await requireRole("super_admin");
   const { id } = await params;
@@ -119,12 +119,18 @@ export default async function AdminCompanyPage({
             {error === "email" ? "Ese correo ya está en uso por otro usuario." : "No se pudo guardar. Comprueba los datos."}
           </p>
         )}
+        {sp.updated && (
+          <p role="status" className="rounded-xl bg-success-bg px-3 py-2 text-sm text-success">
+            Empresa actualizada.
+          </p>
+        )}
 
         {/* Branding */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-ink">Datos de la empresa</h2>
           <form action={updateCompany} className="card grid gap-4 p-6 sm:grid-cols-2">
             <input type="hidden" name="id" value={company.id} />
+            <input type="hidden" name="redirectTo" value={`/admin/companies/${company.id}`} />
             <div>
               <label className="label" htmlFor="name">Nombre</label>
               <input id="name" name="name" defaultValue={company.name} required className="input" />

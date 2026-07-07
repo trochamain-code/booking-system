@@ -22,11 +22,11 @@ const MESSAGES: Record<string, { text: string; ok: boolean }> = {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; error?: string }>;
+  searchParams: Promise<{ created?: string; updated?: string; deleted?: string; error?: string }>;
 }) {
   await requireRole("super_admin");
   const params = await searchParams;
-  const message = params.created ? MESSAGES.created : params.error ? MESSAGES[params.error] : null;
+  const message = params.created ? MESSAGES.created : params.updated ? MESSAGES.updated : params.deleted ? MESSAGES.deleted : params.error ? MESSAGES[params.error] : null;
 
   const rows = await db.select().from(companies).orderBy(desc(companies.createdAt));
 

@@ -108,8 +108,11 @@ export async function updateCompany(formData: FormData): Promise<void> {
     .set({ name, slug, timezone, primaryColor, logoUrl, welcomeText, senderName, contactInfo })
     .where(eq(companies.id, id));
 
+  const redirectTo = String(formData.get("redirectTo") ?? "/admin");
+
   revalidatePath("/admin");
-  redirect("/admin?updated=1");
+  revalidatePath(`/admin/companies/${id}`);
+  redirect(`${redirectTo}?updated=1`);
 }
 
 export async function deleteCompany(formData: FormData): Promise<void> {
@@ -301,4 +304,5 @@ export async function adminUpdateOwner(formData: FormData): Promise<void> {
 
   await db.update(users).set(updates).where(eq(users.id, owner[0].id));
   revalidatePath(`/admin/companies/${companyId}`);
+  redirect(`/admin/companies/${companyId}?updated=1`);
 }
