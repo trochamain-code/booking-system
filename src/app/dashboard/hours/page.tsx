@@ -8,6 +8,7 @@ import {
   deleteClosure,
 } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
+import { DatePickerField } from "@/app/date-picker-field";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -121,10 +122,7 @@ export default async function HoursPage({
 
         <form action={addClosure} className="card flex flex-wrap items-end gap-3 p-4">
           <div>
-            <label className="label" htmlFor="closure-date">
-              Fecha
-            </label>
-            <input id="closure-date" name="date" type="date" required className="input" />
+            <DatePickerField name="date" required label="Fecha" />
           </div>
           <div className="flex-1">
             <label className="label" htmlFor="closure-reason">

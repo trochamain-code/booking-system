@@ -5,6 +5,7 @@ import { dayRangeUtc } from "@/lib/availability";
 import { staffCancelBooking } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { isDateStr } from "@/lib/validation";
+import { DatePickerField } from "@/app/date-picker-field";
 
 export default async function BookingsPage({
   searchParams,
@@ -60,7 +61,7 @@ export default async function BookingsPage({
           </p>
         </div>
         <form method="get" className="flex items-end gap-2">
-          <input type="date" name="date" defaultValue={date} aria-label="Fecha" className="input" />
+          <DatePickerField name="date" defaultValue={date} label="Fecha" />
           <button className="btn btn-ghost">Ver</button>
         </form>
       </header>

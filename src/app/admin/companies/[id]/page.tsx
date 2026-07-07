@@ -20,6 +20,7 @@ import { isDateStr, COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "../../copy-button";
 import { PasswordField } from "../../../password-field";
+import { DatePickerField } from "../../../date-picker-field";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -310,8 +311,7 @@ export default async function AdminCompanyPage({
           <form action={adminAddClosure} className="card flex flex-wrap items-end gap-3 p-4">
             <input type="hidden" name="companyId" value={id} />
             <div>
-              <label className="label" htmlFor="closure-date">Fecha</label>
-              <input id="closure-date" name="date" type="date" required className="input" />
+              <DatePickerField name="date" required label="Fecha" />
             </div>
             <div className="flex-1">
               <label className="label" htmlFor="closure-reason">Motivo (opcional)</label>
@@ -329,7 +329,7 @@ export default async function AdminCompanyPage({
               <p className="text-sm text-muted first-letter:uppercase">{todayHeading}</p>
             </div>
             <form method="get" className="flex items-end gap-2">
-              <input type="date" name="date" defaultValue={date} aria-label="Fecha" className="input" />
+              <DatePickerField name="date" defaultValue={date} label="Fecha" />
               <button className="btn btn-ghost btn-sm">Ver</button>
             </form>
           </header>

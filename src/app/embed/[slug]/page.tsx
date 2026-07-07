@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyBySlug, getAvailability } from "@/lib/booking-data";
+import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
 import { contrastText } from "@/lib/color";
 
@@ -89,7 +90,7 @@ export default async function EmbedPage({
               <label className="label" htmlFor="date">
                 Fecha
               </label>
-              <input id="date" type="date" name="date" min={today} defaultValue={date || today} className="input" />
+              <DatePickerField name="date" defaultValue={date || today} min={today} label="Fecha" />
             </div>
             <button className="btn btn-brand">Buscar horarios</button>
           </form>
