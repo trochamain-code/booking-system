@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { eq, desc } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { resources as resourcesSchema } from "@/lib/schema";
 import { getCompanyBySlug, getAvailability, getAvailableDates } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
@@ -18,6 +21,15 @@ export default async function EmbedPage({
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
+  const [maxCapacity] = await db
+    .select({ max: resourcesSchema.capacity })
+    .from(resourcesSchema)
+    .where(eq(resourcesSchema.companyId, company.id))
+    .orderBy(desc(resourcesSchema.capacity))
+    .limit(1);
+
+  const maxPartySize = Math.max(1, maxCapacity?.max ?? 12);
+
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
     year: "numeric",
@@ -25,7 +37,7 @@ export default async function EmbedPage({
     day: "2-digit",
   }).format(new Date());
 
-  const party = sp.party ? Math.max(1, parseInt(sp.party, 10) || 1) : 2;
+  const party = sp.party ? Math.max(1, Math.min(parseInt(sp.party, 10) || 1, maxPartySize)) : 2;
   const date = sp.date && isDateStr(sp.date) ? sp.date : "";
 
   const [slots, availableDates] = await Promise.all([
@@ -84,7 +96,7 @@ export default async function EmbedPage({
                 Personas
               </label>
               <select id="party" name="party" defaultValue={party} className="select">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                {Array.from({ length: maxPartySize }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>
