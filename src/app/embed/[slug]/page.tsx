@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCompanyBySlug, getAvailability } from "@/lib/booking-data";
+import { getCompanyBySlug, getAvailability, getAvailableDates } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
 import { contrastText } from "@/lib/color";
@@ -27,7 +27,11 @@ export default async function EmbedPage({
 
   const party = sp.party ? Math.max(1, parseInt(sp.party, 10) || 1) : 2;
   const date = sp.date && isDateStr(sp.date) ? sp.date : "";
-  const slots = date ? await getAvailability(company, date, party) : null;
+
+  const [slots, availableDates] = await Promise.all([
+    date ? getAvailability(company, date, party) : null,
+    getAvailableDates(company, party),
+  ]);
 
   const prettyDate = date
     ? new Intl.DateTimeFormat("es-ES", {
@@ -91,7 +95,7 @@ export default async function EmbedPage({
               <label className="label" htmlFor="date">
                 Fecha
               </label>
-              <DatePickerField name="date" defaultValue={date || today} min={today} label="Fecha" />
+              <DatePickerField name="date" defaultValue={date || today} min={today} label="Fecha" availableDates={[...availableDates]} />
             </div>
             <button className="btn btn-brand">Buscar horarios</button>
           </form>
