@@ -7,6 +7,7 @@ import { db } from "./db";
 import { companies } from "./schema";
 import { requireRole } from "./session";
 import { putPublicObject, deletePublicObject } from "./storage";
+import { isUuid } from "./validation";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -29,12 +30,7 @@ function looksLikeImage(buf: Buffer, type: string): boolean {
 
 export type UploadLogoResult = { ok: true; url: string } | { ok: false; error: string };
 
-export async function uploadCompanyLogo(formData: FormData): Promise<UploadLogoResult> {
-  const session = await requireRole("owner", "staff");
-  if (!session.companyId) return { ok: false, error: "Sesión no válida." };
-  const companyId = session.companyId;
-
-  const file = formData.get("file");
+async function storeLogo(companyId: string, file: FormDataEntryValue | null): Promise<UploadLogoResult> {
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "Selecciona una imagen." };
   }
@@ -71,4 +67,21 @@ export async function uploadCompanyLogo(formData: FormData): Promise<UploadLogoR
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
   return { ok: true, url };
+}
+
+/** Company dashboard: owners/staff upload the logo of their own company. */
+export async function uploadCompanyLogo(formData: FormData): Promise<UploadLogoResult> {
+  const session = await requireRole("owner", "staff");
+  if (!session.companyId) return { ok: false, error: "Sesión no válida." };
+  return storeLogo(session.companyId, formData.get("file"));
+}
+
+/** Admin panel: the super-admin uploads a logo for any company. */
+export async function adminUploadCompanyLogo(formData: FormData): Promise<UploadLogoResult> {
+  await requireRole("super_admin");
+  const companyId = String(formData.get("companyId") ?? "");
+  if (!isUuid(companyId)) return { ok: false, error: "Empresa no válida." };
+  const result = await storeLogo(companyId, formData.get("file"));
+  if (result.ok) revalidatePath(`/admin/companies/${companyId}`);
+  return result;
 }

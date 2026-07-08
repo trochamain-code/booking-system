@@ -20,6 +20,8 @@ import {
 import { isDateStr, COMMON_TZS, formatEuros } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "@/app/copy-button";
+import { LogoUploader } from "@/app/logo-uploader";
+import { adminUploadCompanyLogo } from "@/lib/upload-actions";
 import { PasswordField } from "../../../password-field";
 import { DatePickerField } from "../../../date-picker-field";
 
@@ -152,8 +154,27 @@ export default async function AdminCompanyPage({
               <input id="color" name="primaryColor" type="color" defaultValue={company.primaryColor} className="h-11 w-14 cursor-pointer rounded-xl border border-border bg-surface p-1" />
             </div>
             <div className="sm:col-span-2">
-              <label className="label" htmlFor="logo">URL del logo</label>
-              <input id="logo" name="logoUrl" type="url" defaultValue={company.logoUrl ?? ""} placeholder="https://…/logo.png" className="input" />
+              <LogoUploader
+                logoUrl={company.logoUrl}
+                companyName={company.name}
+                action={adminUploadCompanyLogo}
+                companyId={company.id}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="logo">O pega una URL externa</label>
+              <input
+                id="logo"
+                name="logoUrl"
+                type="url"
+                // Remount when the uploader changes the logo so the stale
+                // defaultValue can't overwrite the fresh URL on form save.
+                key={company.logoUrl ?? "none"}
+                defaultValue={company.logoUrl ?? ""}
+                placeholder="https://…/logo.png"
+                className="input"
+              />
+              <p className="mt-1 text-xs text-muted">Vacía este campo y guarda para quitar el logo.</p>
             </div>
             <div className="sm:col-span-2">
               <label className="label" htmlFor="welcome">Texto de bienvenida</label>

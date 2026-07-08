@@ -2,12 +2,24 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { uploadCompanyLogo } from "@/lib/upload-actions";
+import type { UploadLogoResult } from "@/lib/upload-actions";
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
 const MAX_BYTES = 2 * 1024 * 1024;
 
-export function LogoUploader({ logoUrl, companyName }: { logoUrl: string | null; companyName: string }) {
+export function LogoUploader({
+  logoUrl,
+  companyName,
+  action,
+  companyId,
+}: {
+  logoUrl: string | null;
+  companyName: string;
+  // Server action passed in by the page: own-company upload in the dashboard,
+  // any-company upload in the admin panel.
+  action: (formData: FormData) => Promise<UploadLogoResult>;
+  companyId?: string;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -30,8 +42,9 @@ export function LogoUploader({ logoUrl, companyName }: { logoUrl: string | null;
     setPreview(localUrl);
     const fd = new FormData();
     fd.set("file", file);
+    if (companyId) fd.set("companyId", companyId);
     startTransition(async () => {
-      const result = await uploadCompanyLogo(fd);
+      const result = await action(fd);
       if (result.ok) {
         setMessage({ kind: "ok", text: "Logo actualizado. Se usará en el widget y en los correos." });
         router.refresh();
