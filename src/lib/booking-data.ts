@@ -63,7 +63,7 @@ export async function getAvailability(
     timezone: company.timezone,
     slotIntervalMin: company.slotIntervalMin,
     durationMin: company.defaultDurationMin,
-    resources: res.map((r) => ({ id: r.id, capacity: r.capacity, active: r.active })),
+    resources: res.map((r) => ({ id: r.id, capacity: r.capacity, active: r.active, priceCents: r.priceCents })),
     hours: hrs.map((h) => ({ dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime })),
     closures: cls.map((c) => c.date),
     bookings: bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin })),

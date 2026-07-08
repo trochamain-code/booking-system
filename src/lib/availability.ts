@@ -1,7 +1,7 @@
-export type EngineResource = { id: string; capacity: number; active: boolean };
+export type EngineResource = { id: string; capacity: number; active: boolean; priceCents: number | null };
 export type EngineHour = { dayOfWeek: number; openTime: string; closeTime: string };
 export type EngineBooking = { resourceId: string; startAt: Date; durationMin: number };
-export type Slot = { time: string; startAt: string; resourceId: string };
+export type Slot = { time: string; startAt: string; resourceId: string; priceCents: number | null };
 
 export type AvailabilityInput = {
   date: string; // YYYY-MM-DD (calendar date in the company timezone)
@@ -112,7 +112,7 @@ export function availableSlots(input: AvailabilityInput): Slot[] {
       );
 
       if (free) {
-        slots.push({ time, startAt: startAt.toISOString(), resourceId: free.id });
+        slots.push({ time, startAt: startAt.toISOString(), resourceId: free.id, priceCents: free.priceCents });
         seen.add(time);
       }
     }

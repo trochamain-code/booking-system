@@ -4,6 +4,7 @@ import { getCompanyBySlug, getAvailability } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
 import { contrastText } from "@/lib/color";
+import { formatEuros } from "@/lib/validation";
 
 export default async function EmbedPage({
   params,
@@ -106,9 +107,14 @@ export default async function EmbedPage({
                     <Link
                       key={s.startAt}
                       href={`/embed/${slug}/book?date=${date}&party=${party}&startAt=${encodeURIComponent(s.startAt)}`}
-                      className="chip"
+                      className="chip flex-col gap-0 py-2"
                     >
-                      {s.time}
+                      <span>{s.time}</span>
+                      {s.priceCents !== null && s.priceCents > 0 && (
+                        <span className="text-[10px] font-normal opacity-75">
+                          {formatEuros(s.priceCents).replace(".", ",")} €
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>

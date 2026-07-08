@@ -12,7 +12,7 @@ function base(overrides: Partial<AvailabilityInput> = {}): AvailabilityInput {
     timezone: "UTC",
     slotIntervalMin: 60,
     durationMin: 60,
-    resources: [{ id: "t2", capacity: 2, active: true }],
+    resources: [{ id: "t2", capacity: 2, active: true, priceCents: null }],
     hours: [{ dayOfWeek: DOW, openTime: "18:00", closeTime: "21:00" }],
     closures: [],
     bookings: [],
@@ -45,8 +45,8 @@ test("a slot disappears when its only fitting resource is booked over an overlap
 test("a booking on a different resource does not block the slot", () => {
   const input = base({
     resources: [
-      { id: "t2a", capacity: 2, active: true },
-      { id: "t2b", capacity: 2, active: true },
+      { id: "t2a", capacity: 2, active: true, priceCents: null },
+      { id: "t2b", capacity: 2, active: true, priceCents: null },
     ],
     bookings: [{ resourceId: "t2a", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60 }],
   });
@@ -57,8 +57,8 @@ test("party only gets slots on a resource large enough", () => {
   const input = base({
     partySize: 6,
     resources: [
-      { id: "t2", capacity: 2, active: true },
-      { id: "t6", capacity: 6, active: true },
+      { id: "t2", capacity: 2, active: true, priceCents: null },
+      { id: "t6", capacity: 6, active: true, priceCents: null },
     ],
   });
   const slots = availableSlots(input);
@@ -70,15 +70,15 @@ test("auto-assigns the smallest fitting resource", () => {
   const input = base({
     partySize: 2,
     resources: [
-      { id: "t6", capacity: 6, active: true },
-      { id: "t2", capacity: 2, active: true },
+      { id: "t6", capacity: 6, active: true, priceCents: null },
+      { id: "t2", capacity: 2, active: true, priceCents: null },
     ],
   });
   assert.equal(availableSlots(input)[0].resourceId, "t2");
 });
 
-test("inactive resource is ignored", () => {
-  const input = base({ resources: [{ id: "t2", capacity: 2, active: false }] });
+  test("inactive resource is ignored", () => {
+  const input = base({ resources: [{ id: "t2", capacity: 2, active: false, priceCents: null }] });
   assert.deepEqual(times(input), []);
 });
 
