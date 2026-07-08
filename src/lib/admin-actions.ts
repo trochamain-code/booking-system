@@ -9,6 +9,7 @@ import { hashPassword } from "./password";
 import { requireRole } from "./session";
 import { slugify } from "./slug";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
+import { createCompanyWebhook, deleteCompanyWebhook } from "./stripe";
 import {
   cleanText,
   isValidEmail,
@@ -138,32 +139,68 @@ export async function updateCompanyStripe(formData: FormData): Promise<void> {
   if (rawSecret && !/^(sk|rk)_(live|test)_/.test(rawSecret)) redirect(`${back}?error=stripe_secret`);
   if (rawPub && !/^pk_(live|test)_/.test(rawPub)) redirect(`${back}?error=stripe_pub`);
 
+  const [row] = await db
+    .select({
+      name: companies.name,
+      stripeSecretKey: companies.stripeSecretKey,
+      stripeWebhookSecret: companies.stripeWebhookSecret,
+      stripeWebhookEndpointId: companies.stripeWebhookEndpointId,
+    })
+    .from(companies)
+    .where(eq(companies.id, id))
+    .limit(1);
+  if (!row) redirect("/admin?error=invalid");
+
   const updates: Partial<typeof companies.$inferInsert> = { stripeEnabled };
+
   if (clearKeys) {
+    if (row.stripeSecretKey && row.stripeWebhookEndpointId) {
+      await deleteCompanyWebhook(row.stripeSecretKey, row.stripeWebhookEndpointId);
+    }
     updates.stripeSecretKey = null;
     updates.stripePublishableKey = null;
+    updates.stripeWebhookSecret = null;
+    updates.stripeWebhookEndpointId = null;
     updates.stripeEnabled = false;
-  } else {
-    // Empty inputs keep the stored keys — the secret is never echoed back into
-    // the form, so an untouched field must not overwrite it.
-    if (rawSecret) updates.stripeSecretKey = rawSecret;
-    if (rawPub) updates.stripePublishableKey = rawPub;
+    await db.update(companies).set(updates).where(eq(companies.id, id));
+    revalidatePath(back);
+    redirect(`${back}?updated=1`);
   }
 
-  if (updates.stripeEnabled) {
-    const [row] = await db
-      .select({ stripeSecretKey: companies.stripeSecretKey })
-      .from(companies)
-      .where(eq(companies.id, id))
-      .limit(1);
-    if (!row) redirect("/admin?error=invalid");
-    if (!(updates.stripeSecretKey ?? row.stripeSecretKey)) redirect(`${back}?error=stripe_secret`);
+  // Empty inputs keep the stored keys — the secret is never echoed back into
+  // the form, so an untouched field must not overwrite it.
+  if (rawSecret) updates.stripeSecretKey = rawSecret;
+  if (rawPub) updates.stripePublishableKey = rawPub;
+
+  const effectiveSecret = rawSecret || row.stripeSecretKey;
+  if (stripeEnabled && !effectiveSecret) redirect(`${back}?error=stripe_secret`);
+
+  // (Re)provision the fulfillment webhook in the tenant's Stripe account when
+  // the key changes or none exists yet, so paid bookings are created even if
+  // the customer never returns from Checkout.
+  const keyChanged = Boolean(rawSecret) && rawSecret !== row.stripeSecretKey;
+  let webhookFailed = false;
+  if (effectiveSecret && (keyChanged || !row.stripeWebhookSecret)) {
+    if (keyChanged && row.stripeSecretKey && row.stripeWebhookEndpointId) {
+      await deleteCompanyWebhook(row.stripeSecretKey, row.stripeWebhookEndpointId);
+      updates.stripeWebhookSecret = null;
+      updates.stripeWebhookEndpointId = null;
+    }
+    try {
+      const { endpointId, secret } = await createCompanyWebhook(effectiveSecret, id, row.name);
+      updates.stripeWebhookSecret = secret;
+      updates.stripeWebhookEndpointId = endpointId;
+    } catch (err) {
+      // Keys still get saved — payments keep working via the redirect flow.
+      console.error("stripe webhook provisioning failed:", err);
+      webhookFailed = true;
+    }
   }
 
   await db.update(companies).set(updates).where(eq(companies.id, id));
 
   revalidatePath(back);
-  redirect(`${back}?updated=1`);
+  redirect(webhookFailed ? `${back}?error=stripe_webhook` : `${back}?updated=1`);
 }
 
 export async function deleteCompany(formData: FormData): Promise<void> {

@@ -41,6 +41,7 @@ export default async function BookingsPage({
       email: bookings.email,
       phone: bookings.phone,
       status: bookings.status,
+      amountCents: bookings.amountCents,
       resourceName: resources.name,
     })
     .from(bookings)
@@ -121,6 +122,11 @@ export default async function BookingsPage({
                     {b.phone ? ` · ${b.phone}` : ""}
                   </p>
                 </div>
+                {b.amountCents !== null && (
+                  <span className="badge bg-success-bg text-success">
+                    Pagada · {(b.amountCents / 100).toFixed(2)} €
+                  </span>
+                )}
                 {cancelled ? (
                   <span className="badge bg-danger-bg text-danger">Cancelada</span>
                 ) : (

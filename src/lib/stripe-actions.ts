@@ -1,15 +1,16 @@
 "use server";
 
 import crypto from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "./db";
-import { bookings, users, resources, companies } from "./schema";
+import { bookings, resources } from "./schema";
 import { getCompanyBySlug, getAvailability } from "./booking-data";
 import { sendCustomerConfirmation, sendOwnerNotification } from "./email";
 import { rateLimit, clientIp } from "./rate-limit";
 import { hasPgCode, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION } from "./pg-error";
 import { createStripeClient } from "./stripe";
+import { fulfillCheckoutSession, ownerEmail, type BookingView } from "./stripe-fulfillment";
 import {
   cleanText,
   isValidEmail,
@@ -24,53 +25,9 @@ function isSlotConflict(err: unknown): boolean {
   return hasPgCode(err, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION);
 }
 
-type BookingView = {
-  customerName: string;
-  companyName: string;
-  startAt: Date;
-  partySize: number;
-  resourceName: string;
-  timezone: string;
-  status: "confirmed" | "cancelled";
-  logoUrl: string | null;
-  primaryColor: string;
-  welcomeText: string | null;
-};
-
 export type ConfirmPaymentResult =
   | { ok: true; booking: BookingView }
   | { ok: false; error: "rate" | "invalid_company" | "stripe_error" | "not_paid" | "invalid_token" | "not_found" | "slot_taken"; refunded?: boolean };
-
-async function fetchBookingView(token: string): Promise<BookingView | undefined> {
-  const [booking] = await db
-    .select({
-      customerName: bookings.customerName,
-      startAt: bookings.startAt,
-      partySize: bookings.partySize,
-      status: bookings.status,
-      resourceName: resources.name,
-      companyName: companies.name,
-      timezone: companies.timezone,
-      logoUrl: companies.logoUrl,
-      primaryColor: companies.primaryColor,
-      welcomeText: companies.welcomeText,
-    })
-    .from(bookings)
-    .innerJoin(resources, eq(bookings.resourceId, resources.id))
-    .innerJoin(companies, eq(bookings.companyId, companies.id))
-    .where(eq(bookings.token, token))
-    .limit(1);
-  return booking;
-}
-
-async function ownerEmail(companyId: string): Promise<string | undefined> {
-  const owners = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
-    .limit(1);
-  return owners[0]?.email;
-}
 
 export async function createBookingCheckout(formData: FormData): Promise<void> {
   const ip = await clientIp();
@@ -239,109 +196,18 @@ export async function confirmPayment(sessionId: string, token: string, slug: str
     return { ok: false, error: "stripe_error" };
   }
 
-  if (session.payment_status !== "paid") return { ok: false, error: "not_paid" };
-
-  const meta = session.metadata;
   // Constant-time compare: the token doubles as proof that whoever loads the
   // confirmed page is the person who started this checkout.
-  const metaTokenBuf = Buffer.from(meta?.token ?? "");
+  const metaTokenBuf = Buffer.from(session.metadata?.token ?? "");
   const tokenBuf = Buffer.from(token);
   const tokenMatches =
     metaTokenBuf.length > 0 &&
     metaTokenBuf.length === tokenBuf.length &&
     crypto.timingSafeEqual(metaTokenBuf, tokenBuf);
-  if (!meta || !tokenMatches) return { ok: false, error: "invalid_token" };
-  if (meta.companyId !== company.id) return { ok: false, error: "invalid_token" };
-  if (!meta.resourceId || !meta.startAt || !meta.customerName || !meta.email) {
-    return { ok: false, error: "invalid_token" };
-  }
+  if (!tokenMatches) return { ok: false, error: "invalid_token" };
 
-  const existing = await fetchBookingView(token);
-  if (existing) return { ok: true, booking: existing };
-
-  // Insert directly and let the DB unique/exclusion constraints arbitrate. The
-  // customer already paid for this exact slot, so re-running the availability
-  // engine here would wrongly reject slots that started while they were in
-  // Stripe Checkout (and needs the company-local date, which we no longer have).
-  try {
-    await db.insert(bookings).values({
-      companyId: meta.companyId,
-      resourceId: meta.resourceId,
-      customerName: meta.customerName,
-      email: meta.email,
-      phone: meta.phone || null,
-      partySize: parseInt(meta.partySize ?? "1", 10),
-      startAt: new Date(meta.startAt),
-      durationMin: parseInt(meta.durationMin ?? "90", 10),
-      token,
-    });
-  } catch (err) {
-    if (!isSlotConflict(err)) throw err;
-    // Either a concurrent render of this page inserted the same token, or the
-    // slot was genuinely taken while the customer was paying.
-    const race = await fetchBookingView(token);
-    if (race) return { ok: true, booking: race };
-
-    // Slot gone: refund automatically so the customer is never charged for a
-    // booking that doesn't exist.
-    let refunded = false;
-    const paymentIntent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-    if (paymentIntent) {
-      try {
-        await stripe.refunds.create({ payment_intent: paymentIntent });
-        refunded = true;
-      } catch (refundErr) {
-        console.error("stripe refund failed:", refundErr);
-      }
-    }
-    return { ok: false, error: "slot_taken", refunded };
-  }
-
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const cancelUrl = `${appUrl}/cancel/${token}`;
-
-  const [resource] = await db
-    .select({ name: resources.name })
-    .from(resources)
-    .where(eq(resources.id, meta.resourceId))
-    .limit(1);
-
-  await sendCustomerConfirmation({
-    to: meta.email,
-    customerName: meta.customerName,
-    companyName: company.name,
-    senderName: company.senderName || company.name,
-    logoUrl: company.logoUrl,
-    primaryColor: company.primaryColor,
-    contactInfo: company.contactInfo,
-    timezone: company.timezone,
-    startAt: new Date(meta.startAt),
-    partySize: parseInt(meta.partySize ?? "1", 10),
-    resourceName: resource?.name ?? "Sin especificar",
-    cancelUrl,
-  });
-
-  const owner = await ownerEmail(company.id);
-  if (owner) {
-    await sendOwnerNotification({
-      ownerEmail: owner,
-      customerName: meta.customerName,
-      customerEmail: meta.email,
-      customerPhone: meta.phone || null,
-      companyName: company.name,
-      senderName: company.senderName || company.name,
-      logoUrl: company.logoUrl,
-      primaryColor: company.primaryColor,
-      contactInfo: company.contactInfo,
-      timezone: company.timezone,
-      startAt: new Date(meta.startAt),
-      partySize: parseInt(meta.partySize ?? "1", 10),
-      resourceName: resource?.name ?? "Sin especificar",
-      cancelUrl,
-    });
-  }
-
-  const booking = await fetchBookingView(token);
-  if (!booking) return { ok: false, error: "not_found" };
-  return { ok: true, booking };
+  const result = await fulfillCheckoutSession(stripe, session, company);
+  if (result.ok) return result;
+  if (result.error === "bad_metadata") return { ok: false, error: "invalid_token" };
+  return { ok: false, error: result.error, refunded: result.refunded };
 }

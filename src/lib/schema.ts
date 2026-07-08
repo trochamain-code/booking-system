@@ -32,6 +32,10 @@ export const companies = pgTable(
     stripeEnabled: boolean("stripe_enabled").notNull().default(false),
     stripeSecretKey: text("stripe_secret_key"),
     stripePublishableKey: text("stripe_publishable_key"),
+    // Signing secret + endpoint id of the checkout webhook auto-provisioned in
+    // THIS company's Stripe account (each tenant has its own account).
+    stripeWebhookSecret: text("stripe_webhook_secret"),
+    stripeWebhookEndpointId: text("stripe_webhook_endpoint_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -130,6 +134,10 @@ export const bookings = pgTable(
     durationMin: integer("duration_min").notNull(),
     status: bookingStatusEnum("status").notNull().default("confirmed"),
     token: text("token").notNull().unique(),
+    // Set only on paid bookings: enough to find the charge and refund it.
+    stripeSessionId: text("stripe_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    amountCents: integer("amount_cents"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

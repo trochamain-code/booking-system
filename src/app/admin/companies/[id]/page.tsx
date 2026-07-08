@@ -219,6 +219,12 @@ export default async function AdminCompanyPage({
               Clave publicable inválida. Debe empezar por pk_live_ o pk_test_.
             </p>
           )}
+          {error === "stripe_webhook" && (
+            <p role="alert" className="rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn">
+              Las claves se guardaron, pero no se pudo crear el webhook en Stripe. Los pagos funcionan igualmente;
+              vuelve a guardar para reintentar la creación del webhook.
+            </p>
+          )}
           <form action={updateCompanyStripe} className="card grid gap-4 p-6 sm:grid-cols-2">
             <input type="hidden" name="id" value={company.id} />
             <div className="sm:col-span-2">
@@ -250,6 +256,20 @@ export default async function AdminCompanyPage({
                 className="input font-mono text-sm"
               />
             </div>
+            {company.stripeSecretKey && (
+              <div className="sm:col-span-2 rounded-xl bg-surface-2 px-3 py-2 text-sm">
+                {company.stripeWebhookSecret ? (
+                  <p className="text-success">
+                    Webhook de confirmación configurado ✓ — las reservas pagadas se crean aunque el cliente no vuelva
+                    de Stripe.
+                  </p>
+                ) : (
+                  <p className="text-warn">
+                    Webhook de confirmación pendiente — se creará automáticamente al guardar.
+                  </p>
+                )}
+              </div>
+            )}
             {(company.stripeSecretKey || company.stripePublishableKey) && (
               <div className="sm:col-span-2">
                 <label className="flex items-center gap-3">
