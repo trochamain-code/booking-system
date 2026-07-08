@@ -44,7 +44,14 @@ export function LogoUploader({
     fd.set("file", file);
     if (companyId) fd.set("companyId", companyId);
     startTransition(async () => {
-      const result = await action(fd);
+      // A dropped connection (redeploy, tunnel blip) must show a retry message,
+      // not bubble out of the transition and take down the page's error boundary.
+      let result: UploadLogoResult;
+      try {
+        result = await action(fd);
+      } catch {
+        result = { ok: false, error: "No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo." };
+      }
       if (result.ok) {
         setMessage({ kind: "ok", text: "Logo actualizado. Se usará en el widget y en los correos." });
         router.refresh();
