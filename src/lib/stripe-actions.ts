@@ -142,7 +142,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
               name: `Reserva: ${resource.name}`,
               description: `${company.name} · ${partySize} personas · ${new Intl.DateTimeFormat("es-ES", { timeZone: company.timezone, dateStyle: "long", timeStyle: "short" }).format(new Date(startAtIso))}`,
             },
-            unit_amount: resource.priceCents,
+            unit_amount: resource.priceCents * partySize,
           },
           quantity: 1,
         },

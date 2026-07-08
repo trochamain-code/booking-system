@@ -116,7 +116,7 @@ export default async function EmbedPage({
                       <span>{s.time}</span>
                       {s.priceCents !== null && s.priceCents > 0 && (
                         <span className="text-[10px] font-normal opacity-75">
-                          {formatEuros(s.priceCents).replace(".", ",")} €
+                          {formatEuros(s.priceCents).replace(".", ",")} €/pers
                         </span>
                       )}
                     </Link>

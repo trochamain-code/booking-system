@@ -24,8 +24,8 @@ export default async function ResourcesPage({
       <header>
         <h1 className="text-2xl font-semibold text-ink">Recursos</h1>
         <p className="mt-1 text-sm text-muted">
-          Mesas, sillas, pistas, salas… lo que se reserve. El aforo es cuántas personas admite; deja el precio vacío
-          si la reserva es gratuita.
+          Mesas, sillas, pistas, salas… lo que se reserve. El aforo es cuántas personas admite. El precio es por
+          plaza; el total se calcula multiplicando por el número de personas. Deja el precio vacío si es gratuito.
         </p>
       </header>
 
@@ -52,7 +52,7 @@ export default async function ResourcesPage({
                   <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
                 </label>
                 <label className="flex items-center gap-2 text-sm text-muted">
-                  Precio (€)
+                  Precio/plaza (€)
                   <input
                     name="priceEuros"
                     type="number"
@@ -92,7 +92,7 @@ export default async function ResourcesPage({
         </div>
         <div>
           <label className="label" htmlFor="new-resource-price">
-            Precio (€)
+            Precio/plaza (€)
           </label>
           <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
         </div>

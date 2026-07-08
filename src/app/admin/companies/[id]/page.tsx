@@ -420,8 +420,8 @@ export default async function AdminCompanyPage({
                         <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
                       </label>
                       <label className="flex items-center gap-2 text-sm text-muted">
-                        Precio (€)
-                        <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio en euros" className="input w-24" />
+                        Precio/plaza (€)
+                        <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio por plaza en euros" className="input w-24" />
                       </label>
                       <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
                         <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
@@ -446,7 +446,7 @@ export default async function AdminCompanyPage({
               <input id="new-resource-capacity" name="capacity" type="number" min={1} defaultValue={2} className="input w-24" />
             </div>
             <div>
-              <label className="label" htmlFor="new-resource-price">Precio (€)</label>
+              <label className="label" htmlFor="new-resource-price">Precio/plaza (€)</label>
               <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
             </div>
             <button className="btn btn-primary">Añadir recurso</button>
