@@ -409,28 +409,37 @@ export default async function AdminCompanyPage({
           ) : (
             <ul className="card divide-y divide-border">
               {rows.map((r) => (
-                <li key={r.id}>
-                  <form action={adminUpdateResource} className="flex flex-wrap items-center gap-3 p-4">
-                    <input type="hidden" name="companyId" value={id} />
-                    <input type="hidden" name="id" value={r.id} />
-                    <input name="name" defaultValue={r.name} aria-label="Nombre" className="input min-w-40 flex-1" />
-                    <label className="flex items-center gap-2 text-sm text-muted">
-                      Plazas
-                      <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-muted">
-                      Precio (€)
-                      <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio en euros" className="input w-24" />
-                    </label>
-                    <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
-                      <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
-                      <span className="h-5 w-9 rounded-full border border-border-strong bg-surface-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:border-primary peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                      Activo
-                    </label>
-                    <button className="btn btn-ghost btn-sm">Guardar</button>
-                    <button formAction={adminDeleteResource} className="btn btn-ghost btn-sm text-danger">Eliminar</button>
-                  </form>
-                </li>
+                  <li key={r.id}>
+                    <form
+                      action={adminUpdateResource}
+                      onSubmit={(e) => {
+                        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+                        if (submitter?.getAttribute("data-confirm") && !confirm("¿Eliminar este recurso? Esta acción no se puede deshacer.")) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="flex flex-wrap items-center gap-3 p-4"
+                    >
+                      <input type="hidden" name="companyId" value={id} />
+                      <input type="hidden" name="id" value={r.id} />
+                      <input name="name" defaultValue={r.name} aria-label="Nombre" className="input min-w-40 flex-1" />
+                      <label className="flex items-center gap-2 text-sm text-muted">
+                        Plazas
+                        <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-muted">
+                        Precio (€)
+                        <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio en euros" className="input w-24" />
+                      </label>
+                      <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
+                        <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
+                        <span className="h-5 w-9 rounded-full border border-border-strong bg-surface-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:border-primary peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                        Activo
+                      </label>
+                      <button className="btn btn-ghost btn-sm">Guardar</button>
+                      <button formAction={adminDeleteResource} data-confirm className="btn btn-ghost btn-sm text-danger">Eliminar</button>
+                    </form>
+                  </li>
               ))}
             </ul>
           )}

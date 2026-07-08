@@ -43,7 +43,16 @@ export default async function ResourcesPage({
         <ul className="card divide-y divide-border">
           {rows.map((r) => (
             <li key={r.id}>
-              <form action={updateResource} className="flex flex-wrap items-center gap-3 p-4">
+              <form
+                action={updateResource}
+                onSubmit={(e) => {
+                  const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+                  if (submitter?.getAttribute("data-confirm") && !confirm("¿Eliminar este recurso? Esta acción no se puede deshacer.")) {
+                    e.preventDefault();
+                  }
+                }}
+                className="flex flex-wrap items-center gap-3 p-4"
+              >
                 <input type="hidden" name="id" value={r.id} />
                 <input name="name" defaultValue={r.name} aria-label="Nombre del recurso" className="input min-w-40 flex-1" />
                 <label className="flex items-center gap-2 text-sm text-muted">
@@ -69,7 +78,7 @@ export default async function ResourcesPage({
                   Activo
                 </label>
                 <button className="btn btn-ghost btn-sm">Guardar</button>
-                <button formAction={deleteResource} className="btn btn-ghost btn-sm text-danger">Eliminar</button>
+                <button formAction={deleteResource} data-confirm className="btn btn-ghost btn-sm text-danger">Eliminar</button>
               </form>
             </li>
           ))}
