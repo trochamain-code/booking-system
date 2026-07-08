@@ -13,6 +13,13 @@ const baseSecurityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // Logo uploads go through a server action; the default 1 MB cap is too
+      // small for a 2 MB image plus multipart overhead.
+      bodySizeLimit: "5mb",
+    },
+  },
   async headers() {
     return [
       {

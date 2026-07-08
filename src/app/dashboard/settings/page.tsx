@@ -2,6 +2,7 @@ import { updateBranding } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { contrastText } from "@/lib/color";
 import { CopyButton } from "@/app/copy-button";
+import { LogoUploader } from "./logo-uploader";
 
 export default async function SettingsPage({
   searchParams,
@@ -39,19 +40,24 @@ export default async function SettingsPage({
 
           <fieldset className="space-y-4">
             <legend className="text-sm font-semibold text-ink">Marca visual</legend>
+            <LogoUploader logoUrl={company.logoUrl} companyName={company.name} />
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label className="label" htmlFor="logoUrl">
-                  URL del logo
+                  O pega una URL externa
                 </label>
                 <input
                   id="logoUrl"
                   name="logoUrl"
                   type="url"
+                  // Remount when the uploader changes the logo so the stale
+                  // defaultValue can't overwrite the fresh URL on form save.
+                  key={company.logoUrl ?? "none"}
                   defaultValue={company.logoUrl ?? ""}
                   placeholder="https://…/logo.png"
                   className="input"
                 />
+                <p className="mt-1 text-xs text-muted">Vacía este campo y guarda para quitar el logo.</p>
               </div>
               <div>
                 <label className="label" htmlFor="primaryColor">

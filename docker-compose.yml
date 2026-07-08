@@ -38,10 +38,19 @@ services:
       SMTP_USER: ${SMTP_USER:-reservas@trocha.shop}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-reservas@trocha.shop}
+      # Object storage (MinIO) for uploaded assets like company logos.
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-booking}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-dev_minio_password}
+      S3_BUCKET: logos
+      # Public base URL where the bucket is served (Cloudflare tunnel -> minio).
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-https://media.host-ia.online}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test:
@@ -53,6 +62,26 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 3
+
+  # Object storage for uploaded assets (company logos). Served publicly at
+  # https://media.host-ia.online through the Cloudflare tunnel; the app talks
+  # to it over the compose network. Localhost-only host port for ops/debug.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-booking}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_minio_password}
+    ports:
+      - "127.0.0.1:9100:9000"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Cloudflare Tunnel: publishes the app at https://booking.host-ia.online
   # without exposing any host port. Reaches the app over the compose network.
@@ -69,3 +98,4 @@ services:
 
 volumes:
   pgdata:
+  miniodata:

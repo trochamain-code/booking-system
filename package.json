@@ -22,6 +22,7 @@
     "dayjs": "^1.11.21",
     "driver.js": "^1.6.0",
     "drizzle-orm": "^0.45.2",
+    "minio": "^8.0.7",
     "next": "16.2.10",
     "nodemailer": "^9.0.3",
     "postgres": "^3.4.9",
