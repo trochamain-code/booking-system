@@ -2,7 +2,7 @@ import { and, asc, eq, gte, lt } from "drizzle-orm";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { db } from "@/lib/db";
-import { companies, users, resources, openingHours, closures, bookings } from "@/lib/schema";
+import { companies, users, resources, openingHours, closures, bookings, cancellationPolicies } from "@/lib/schema";
 import { dayRangeUtc } from "@/lib/availability";
 import {
   updateCompany,
@@ -17,6 +17,7 @@ import {
   adminCancelBooking,
   adminUpdateOwner,
 } from "@/lib/admin-actions";
+import { adminSaveCancellationPolicy, adminDeleteCancellationPolicy } from "@/lib/cancellation-policy";
 import { isDateStr, COMMON_TZS, formatEuros } from "@/lib/validation";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "@/app/copy-button";
@@ -42,7 +43,7 @@ export default async function AdminCompanyPage({
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) return <p className="p-8 text-muted">Empresa no encontrada.</p>;
 
-  const [rows, hours, closed, owners] = await Promise.all([
+  const [rows, hours, closed, owners, policies] = await Promise.all([
     db
       .select()
       .from(resources)
@@ -63,7 +64,15 @@ export default async function AdminCompanyPage({
       .from(users)
       .where(and(eq(users.companyId, id), eq(users.role, "owner")))
       .limit(1),
+    db
+      .select()
+      .from(cancellationPolicies)
+      .where(eq(cancellationPolicies.companyId, id))
+      .orderBy(cancellationPolicies.ruleType, cancellationPolicies.thresholdMinutes),
   ]);
+
+  const afterBookingRules = policies.filter((p) => p.ruleType === "after_booking");
+  const beforeEventRules = policies.filter((p) => p.ruleType === "before_event");
 
   const owner = owners[0];
 
@@ -303,6 +312,90 @@ export default async function AdminCompanyPage({
               <button className="btn btn-primary">Guardar Stripe</button>
             </div>
           </form>
+        </section>
+
+        {/* Cancellation policies */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-ink">Política de cancelación</h2>
+          <div className="card divide-y divide-border p-6">
+            <div className="pb-5">
+              <h3 className="text-sm font-semibold text-ink">Periodo de gracia (tras la reserva)</h3>
+              <p className="text-xs text-muted">Se aplica si la cancelación ocurre dentro de los minutos indicados.</p>
+              {afterBookingRules.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {afterBookingRules.map((rule) => (
+                    <li key={rule.id} className="flex items-center gap-3 text-sm">
+                      <span className="text-ink">Dentro de {rule.thresholdMinutes} min → {rule.refundPercent}% reembolso</span>
+                      <form action={adminDeleteCancellationPolicy}>
+                        <input type="hidden" name="id" value={rule.id} />
+                        <input type="hidden" name="companyId" value={id} />
+                        <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form action={adminSaveCancellationPolicy} className="mt-3 flex flex-wrap items-end gap-3">
+                <input type="hidden" name="companyId" value={id} />
+                <input type="hidden" name="ruleType" value="after_booking" />
+                <div>
+                  <label className="label" htmlFor="admin-grace-minutes">Dentro de</label>
+                  <input id="admin-grace-minutes" name="thresholdMinutes" type="number" min={0} defaultValue={10} className="input w-24" />
+                </div>
+                <span className="text-sm text-muted pb-2">minutos</span>
+                <div>
+                  <label className="label" htmlFor="admin-grace-percent">Reembolsar</label>
+                  <select id="admin-grace-percent" name="refundPercent" defaultValue="100" className="select">
+                    <option value="0">0%</option>
+                    <option value="25">25%</option>
+                    <option value="50">50%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                  </select>
+                </div>
+                <button className="btn btn-ghost btn-sm">Añadir regla</button>
+              </form>
+            </div>
+
+            <div className="pt-5">
+              <h3 className="text-sm font-semibold text-ink">Antelación antes del evento</h3>
+              <p className="text-xs text-muted">Se aplica si la cancelación ocurre al menos con esa antelación.</p>
+              {beforeEventRules.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {beforeEventRules.map((rule) => (
+                    <li key={rule.id} className="flex items-center gap-3 text-sm">
+                      <span className="text-ink">≥ {rule.thresholdMinutes} min antes → {rule.refundPercent}% reembolso</span>
+                      <form action={adminDeleteCancellationPolicy}>
+                        <input type="hidden" name="id" value={rule.id} />
+                        <input type="hidden" name="companyId" value={id} />
+                        <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form action={adminSaveCancellationPolicy} className="mt-3 flex flex-wrap items-end gap-3">
+                <input type="hidden" name="companyId" value={id} />
+                <input type="hidden" name="ruleType" value="before_event" />
+                <div>
+                  <label className="label" htmlFor="admin-before-minutes">Al menos</label>
+                  <input id="admin-before-minutes" name="thresholdMinutes" type="number" min={0} defaultValue={1440} className="input w-24" />
+                </div>
+                <span className="text text-muted pb-2">minutos antes</span>
+                <div>
+                  <label className="label" htmlFor="admin-before-percent">Reembolsar</label>
+                  <select id="admin-before-percent" name="refundPercent" defaultValue="100" className="select">
+                    <option value="0">0%</option>
+                    <option value="25">25%</option>
+                    <option value="50">50%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                  </select>
+                </div>
+                <button className="btn btn-ghost btn-sm">Añadir regla</button>
+              </form>
+            </div>
+          </div>
         </section>
 
         {/* Resources */}

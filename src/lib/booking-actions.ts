@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { bookings, users, resources, companies } from "./schema";
+import { computeRefundPercent, refundBooking } from "./cancellation-policy";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
 import { rateLimit, clientIp } from "./rate-limit";
 
@@ -27,9 +28,13 @@ export async function cancelBooking(formData: FormData): Promise<void> {
       email: bookings.email,
       partySize: bookings.partySize,
       startAt: bookings.startAt,
+      createdAt: bookings.createdAt,
       status: bookings.status,
+      stripePaymentIntentId: bookings.stripePaymentIntentId,
+      amountCents: bookings.amountCents,
       companyName: companies.name,
       companyId: companies.id,
+      stripeSecretKey: companies.stripeSecretKey,
       timezone: companies.timezone,
       logoUrl: companies.logoUrl,
       primaryColor: companies.primaryColor,
@@ -55,6 +60,11 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     .where(and(eq(bookings.token, token), eq(bookings.status, "confirmed")))
     .returning({ id: bookings.id });
   if (cancelled.length === 0) redirect(`/cancel/${token}?done=1`);
+
+  const refundPercent = await computeRefundPercent(booking, booking.companyId);
+  if (refundPercent > 0 && booking.stripePaymentIntentId && booking.stripeSecretKey && booking.amountCents) {
+    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, booking.stripeSecretKey);
+  }
 
   await sendCustomerCancellation({
     to: booking.email,

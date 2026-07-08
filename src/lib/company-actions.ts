@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "./db";
 import { resources, openingHours, closures, bookings, companies, users } from "./schema";
 import { requireRole } from "./session";
+import { computeRefundPercent, refundBooking } from "./cancellation-policy";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
 import {
   cleanText,
@@ -114,6 +115,9 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
       email: bookings.email,
       partySize: bookings.partySize,
       startAt: bookings.startAt,
+      createdAt: bookings.createdAt,
+      stripePaymentIntentId: bookings.stripePaymentIntentId,
+      amountCents: bookings.amountCents,
       resourceName: resources.name,
     })
     .from(bookings)
@@ -131,10 +135,15 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/bookings");
 
   const [company] = await db
-    .select({ name: companies.name, timezone: companies.timezone, logoUrl: companies.logoUrl, primaryColor: companies.primaryColor, senderName: companies.senderName, contactInfo: companies.contactInfo })
+    .select({ name: companies.name, timezone: companies.timezone, logoUrl: companies.logoUrl, primaryColor: companies.primaryColor, senderName: companies.senderName, contactInfo: companies.contactInfo, stripeSecretKey: companies.stripeSecretKey })
     .from(companies)
     .where(eq(companies.id, companyId))
     .limit(1);
+
+  const refundPercent = await computeRefundPercent(booking, companyId);
+  if (refundPercent > 0 && booking.stripePaymentIntentId && company.stripeSecretKey && booking.amountCents) {
+    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, company.stripeSecretKey);
+  }
 
   if (!company) return;
 

@@ -116,6 +116,41 @@ export const closures = pgTable(
 
 export const bookingStatusEnum = pgEnum("booking_status", ["confirmed", "cancelled"]);
 
+/**
+ * Cancellation / refund policies per company.
+ *
+ * Two rule types:
+ *   "after_booking" — grace period. If cancelled within threshold_minutes of
+ *     booking creation, the customer gets refund_percent back. Rules are
+ *     evaluated in ascending threshold order; first match wins.
+ *
+ *   "before_event"  — proximity to event. If cancelled with at least
+ *     threshold_minutes before start_at, the customer gets refund_percent back.
+ *     Rules are evaluated in descending threshold order (most generous first);
+ *     first match wins.
+ *
+ * If no rule matches, the refund is 0 % (the business keeps the money).
+ */
+export const cancellationPolicies = pgTable(
+  "cancellation_policies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    ruleType: text("rule_type", { enum: ["after_booking", "before_event"] }).notNull(),
+    thresholdMinutes: integer("threshold_minutes").notNull(),
+    refundPercent: integer("refund_percent").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("cancellation_policies_company_idx").on(t.companyId),
+    index("cancellation_policies_company_type_idx").on(t.companyId, t.ruleType),
+    check("cancellation_policies_threshold_pos", sql`${t.thresholdMinutes} >= 0`),
+    check("cancellation_policies_refund_range", sql`${t.refundPercent} >= 0 AND ${t.refundPercent} <= 100`),
+  ],
+);
+
 export const bookings = pgTable(
   "bookings",
   {

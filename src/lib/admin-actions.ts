@@ -9,6 +9,7 @@ import { hashPassword } from "./password";
 import { requireRole } from "./session";
 import { slugify } from "./slug";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
+import { computeRefundPercent, refundBooking } from "./cancellation-policy";
 import { createCompanyWebhook, deleteCompanyWebhook } from "./stripe";
 import {
   cleanText,
@@ -305,6 +306,9 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
       email: bookings.email,
       partySize: bookings.partySize,
       startAt: bookings.startAt,
+      createdAt: bookings.createdAt,
+      stripePaymentIntentId: bookings.stripePaymentIntentId,
+      amountCents: bookings.amountCents,
       resourceName: resources.name,
     })
     .from(bookings)
@@ -322,10 +326,15 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
   revalidatePath(`/admin/companies/${companyId}`);
 
   const [company] = await db
-    .select({ name: companies.name, timezone: companies.timezone, logoUrl: companies.logoUrl, primaryColor: companies.primaryColor, senderName: companies.senderName, contactInfo: companies.contactInfo })
+    .select({ name: companies.name, timezone: companies.timezone, logoUrl: companies.logoUrl, primaryColor: companies.primaryColor, senderName: companies.senderName, contactInfo: companies.contactInfo, stripeSecretKey: companies.stripeSecretKey })
     .from(companies)
     .where(eq(companies.id, companyId))
     .limit(1);
+
+  const refundPercent = await computeRefundPercent(booking, companyId);
+  if (refundPercent > 0 && booking.stripePaymentIntentId && company.stripeSecretKey && booking.amountCents) {
+    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, company.stripeSecretKey);
+  }
 
   if (!company) return;
 

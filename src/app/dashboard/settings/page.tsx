@@ -1,5 +1,9 @@
+import { eq } from "drizzle-orm";
 import { updateBranding } from "@/lib/company-actions";
+import { saveCancellationPolicy, deleteCancellationPolicy } from "@/lib/cancellation-policy";
 import { requireCompany } from "@/lib/company";
+import { db } from "@/lib/db";
+import { cancellationPolicies } from "@/lib/schema";
 import { contrastText } from "@/lib/color";
 import { CopyButton } from "@/app/copy-button";
 import { LogoUploader } from "@/app/logo-uploader";
@@ -23,6 +27,15 @@ export default async function SettingsPage({
       : error === "color"
         ? "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)."
         : null;
+
+  const policies = await db
+    .select()
+    .from(cancellationPolicies)
+    .where(eq(cancellationPolicies.companyId, company.id))
+    .orderBy(cancellationPolicies.ruleType, cancellationPolicies.thresholdMinutes);
+
+  const afterBookingRules = policies.filter((p) => p.ruleType === "after_booking");
+  const beforeEventRules = policies.filter((p) => p.ruleType === "before_event");
 
   return (
     <div className="max-w-2xl space-y-10">
@@ -220,6 +233,94 @@ export default async function SettingsPage({
               Stripe no está activado. Las reservas son gratuitas. Contacta con el administrador para activar pagos.
             </p>
           )}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <header>
+          <h2 className="text-lg font-semibold text-ink">Política de cancelación</h2>
+          <p className="mt-1 text-sm text-muted">
+            Define cuánto se reembolsa al cliente según cuándo cancele. Las reglas se evalúan en orden: primero el
+            periodo de gracia tras la reserva, luego la antelación respecto al inicio de la reserva.
+          </p>
+        </header>
+
+        <div className="card divide-y divide-border p-6">
+          <div className="pb-5">
+            <h3 className="text-sm font-semibold text-ink">Periodo de gracia (tras la reserva)</h3>
+            <p className="text-xs text-muted">Se aplica si la cancelación ocurre dentro de los minutos indicados.</p>
+            {afterBookingRules.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {afterBookingRules.map((rule) => (
+                  <li key={rule.id} className="flex items-center gap-3 text-sm">
+                    <span className="text-ink">Dentro de {rule.thresholdMinutes} min → {rule.refundPercent}% reembolso</span>
+                    <form action={deleteCancellationPolicy}>
+                      <input type="hidden" name="id" value={rule.id} />
+                      <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={saveCancellationPolicy} className="mt-3 flex flex-wrap items-end gap-3">
+              <input type="hidden" name="ruleType" value="after_booking" />
+              <div>
+                <label className="label" htmlFor="grace-minutes">Dentro de</label>
+                <input id="grace-minutes" name="thresholdMinutes" type="number" min={0} defaultValue={10} className="input w-24" />
+              </div>
+              <span className="text-sm text-muted pb-2">minutos</span>
+              <div>
+                <label className="label" htmlFor="grace-percent">Reembolsar</label>
+                <select id="grace-percent" name="refundPercent" defaultValue="100" className="select">
+                  <option value="0">0%</option>
+                  <option value="25">25%</option>
+                  <option value="50">50%</option>
+                  <option value="75">75%</option>
+                  <option value="100">100%</option>
+                </select>
+              </div>
+              <button className="btn btn-ghost btn-sm">Añadir regla</button>
+            </form>
+          </div>
+
+          <div className="pt-5">
+            <h3 className="text-sm font-semibold text-ink">Antelación antes del evento</h3>
+            <p className="text-xs text-muted">
+              Se aplica si la cancelación ocurre al menos con esa antelación. Se evalúa la regla más exigente primero.
+            </p>
+            {beforeEventRules.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {beforeEventRules.map((rule) => (
+                  <li key={rule.id} className="flex items-center gap-3 text-sm">
+                    <span className="text-ink">≥ {rule.thresholdMinutes} min antes → {rule.refundPercent}% reembolso</span>
+                    <form action={deleteCancellationPolicy}>
+                      <input type="hidden" name="id" value={rule.id} />
+                      <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={saveCancellationPolicy} className="mt-3 flex flex-wrap items-end gap-3">
+              <input type="hidden" name="ruleType" value="before_event" />
+              <div>
+                <label className="label" htmlFor="before-minutes">Al menos</label>
+                <input id="before-minutes" name="thresholdMinutes" type="number" min={0} defaultValue={1440} className="input w-24" />
+              </div>
+              <span className="text-sm text-muted pb-2">minutos antes</span>
+              <div>
+                <label className="label" htmlFor="before-percent">Reembolsar</label>
+                <select id="before-percent" name="refundPercent" defaultValue="100" className="select">
+                  <option value="0">0%</option>
+                  <option value="25">25%</option>
+                  <option value="50">50%</option>
+                  <option value="75">75%</option>
+                  <option value="100">100%</option>
+                </select>
+              </div>
+              <button className="btn btn-ghost btn-sm">Añadir regla</button>
+            </form>
+          </div>
         </div>
       </section>
 
