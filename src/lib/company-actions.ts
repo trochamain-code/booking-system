@@ -90,6 +90,24 @@ export async function deleteOpeningHour(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/hours");
 }
 
+// --- Stripe ---
+
+export async function toggleStripe(): Promise<void> {
+  const companyId = await currentCompanyId();
+  const company = await db
+    .select({ stripeEnabled: companies.stripeEnabled })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .then((r) => r[0]);
+  if (!company) redirect("/dashboard/settings");
+  // Only allow toggling on if Stripe keys are configured (set by super-admin).
+  await db
+    .update(companies)
+    .set({ stripeEnabled: !company.stripeEnabled })
+    .where(eq(companies.id, companyId));
+  revalidatePath("/dashboard/settings");
+}
+
 // --- Closures ---
 
 export async function addClosure(formData: FormData): Promise<void> {

@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { updateBranding } from "@/lib/company-actions";
+import { updateBranding, toggleStripe } from "@/lib/company-actions";
 import { saveCancellationPolicy, deleteCancellationPolicy } from "@/lib/cancellation-policy";
 import { requireCompany } from "@/lib/company";
 import { db } from "@/lib/db";
-import { cancellationPolicies } from "@/lib/schema";
+import { cancellationPolicies, companies } from "@/lib/schema";
 import { contrastText } from "@/lib/color";
 import { CopyButton } from "@/app/copy-button";
 import { LogoUploader } from "@/app/logo-uploader";
@@ -16,6 +16,15 @@ export default async function SettingsPage({
 }) {
   const { company } = await requireCompany();
   const { error } = await searchParams;
+
+  const stripeRow = await db
+    .select({
+      stripeEnabled: companies.stripeEnabled,
+      stripeSecretKey: companies.stripeSecretKey,
+    })
+    .from(companies)
+    .where(eq(companies.id, company.id))
+    .then((r) => r[0]);
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const widgetUrl = `${appUrl}/embed/${company.slug}`;
@@ -219,17 +228,32 @@ export default async function SettingsPage({
           <h2 className="text-lg font-semibold text-ink">Pagos con Stripe</h2>
         </header>
         <div className="card p-6">
-          {company.stripeEnabled ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-success">Stripe activado</p>
-              <p className="text-xs text-muted">
-                Los recursos con precio asignado requerirán pago al reservar.
-                Las claves de Stripe las configura el administrador del sistema.
-              </p>
-            </div>
+          {stripeRow.stripeSecretKey ? (
+            <form action={toggleStripe} className="flex items-center justify-between gap-4">
+              <div>
+                <p className={`text-sm font-medium ${stripeRow.stripeEnabled ? "text-success" : "text-muted"}`}>
+                  {stripeRow.stripeEnabled ? "Stripe activado" : "Stripe desactivado"}
+                </p>
+                <p className="text-xs text-muted mt-1">
+                  {stripeRow.stripeEnabled
+                    ? "Los recursos con precio asignado requerirán pago al reservar."
+                    : "Las reservas se crean sin cobro, incluso si tienen precio."}
+                </p>
+              </div>
+              <button
+                type="submit"
+                className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-border-strong transition-colors"
+                style={{ backgroundColor: stripeRow.stripeEnabled ? "var(--color-primary, #2563eb)" : "var(--color-surface-2, #e5e7eb)" }}
+              >
+                <span
+                  className="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
+                  style={{ transform: stripeRow.stripeEnabled ? "translateX(100%)" : "translateX(0)", marginLeft: "2px" }}
+                />
+              </button>
+            </form>
           ) : (
             <p className="text-sm text-muted">
-              Stripe no está activado. Las reservas son gratuitas. Contacta con el administrador para activar pagos.
+              Stripe no está configurado. Contacta con el administrador del sistema para que añada las claves de Stripe.
             </p>
           )}
         </div>
