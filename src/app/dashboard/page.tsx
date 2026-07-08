@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { resources, bookings, openingHours } from "@/lib/schema";
 import { dayRangeUtc } from "@/lib/availability";
 import { requireCompany } from "@/lib/company";
-import { CopyButton } from "@/app/copy-button";
 
 export default async function OverviewPage() {
   const { companyId, company } = await requireCompany();
@@ -18,7 +17,7 @@ export default async function OverviewPage() {
   const { start, end } = dayRangeUtc(today, company.timezone);
   const weekEnd = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [[todayCount], [weekCount], [resourceCount], [hoursCount], [totalBookings]] = await Promise.all([
+  const [[todayCount], [weekCount], [resourceCount], [hoursCount]] = await Promise.all([
     db
       .select({ n: count() })
       .from(bookings)
@@ -32,11 +31,7 @@ export default async function OverviewPage() {
       .from(resources)
       .where(and(eq(resources.companyId, companyId), eq(resources.active, true))),
     db.select({ n: count() }).from(openingHours).where(eq(openingHours.companyId, companyId)),
-    db.select({ n: count() }).from(bookings).where(eq(bookings.companyId, companyId)),
   ]);
-
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const widgetUrl = `${appUrl}/embed/${company.slug}`;
 
   const stats = [
     { label: "Reservas hoy", value: todayCount.n, href: `/dashboard/bookings?date=${today}` },
@@ -58,13 +53,6 @@ export default async function OverviewPage() {
       detail: "Sin horario, tus clientes no verán huecos disponibles.",
       href: "/dashboard/hours",
       cta: "Añadir horario",
-    },
-    {
-      done: totalBookings.n > 0,
-      title: "Comparte tu enlace y recibe tu primera reserva",
-      detail: "Incrusta el widget en tu web o comparte el enlace directo.",
-      href: "/dashboard/settings",
-      cta: "Ver cómo compartir",
     },
   ];
   const doneCount = setupSteps.filter((s) => s.done).length;
@@ -124,27 +112,6 @@ export default async function OverviewPage() {
           </Link>
         ))}
       </div>
-
-      <section data-tour="widget-link" className="card p-6">
-        <h2 className="text-lg font-semibold text-ink">Tu widget de reservas</h2>
-        <p className="mt-1 text-sm text-muted">
-          {resourceCount.n === 0
-            ? "Añade un recurso y tu horario, luego comparte este enlace para empezar a recibir reservas."
-            : "Comparte este enlace o incrústalo en tu web para empezar a recibir reservas."}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <code className="min-w-0 flex-1 truncate rounded-xl border border-border bg-surface-2 px-3 py-2.5 font-mono text-xs text-muted">
-            {widgetUrl}
-          </code>
-          <CopyButton text={widgetUrl} label="Copiar enlace" />
-          <a href={widgetUrl} target="_blank" rel="noreferrer" className="btn btn-ghost">
-            Abrir widget
-          </a>
-          <Link href="/dashboard/settings" className="btn btn-primary">
-            Código para incrustar
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

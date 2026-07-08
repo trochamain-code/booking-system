@@ -10,6 +10,7 @@ import {
   deleteCompany,
   adminAddResource,
   adminUpdateResource,
+  adminDeleteResource,
   adminAddOpeningHour,
   adminDeleteOpeningHour,
   adminAddClosure,
@@ -421,11 +422,13 @@ export default async function AdminCompanyPage({
                       Precio (€)
                       <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio en euros" className="input w-24" />
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-muted">
-                      <input type="checkbox" name="active" defaultChecked={r.active} className="h-4 w-4 accent-[var(--color-primary)]" />
+                    <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
+                      <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
+                      <span className="h-5 w-9 rounded-full border border-border-strong bg-surface-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:border-primary peer-checked:bg-primary peer-checked:after:translate-x-full" />
                       Activo
                     </label>
                     <button className="btn btn-ghost btn-sm">Guardar</button>
+                    <button formAction={adminDeleteResource} className="btn btn-ghost btn-sm text-danger">Eliminar</button>
                   </form>
                 </li>
               ))}

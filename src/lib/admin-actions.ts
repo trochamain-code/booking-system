@@ -246,6 +246,19 @@ export async function adminUpdateResource(formData: FormData): Promise<void> {
   revalidatePath(`/admin/companies/${companyId}`);
 }
 
+export async function adminDeleteResource(formData: FormData): Promise<void> {
+  await requireRole("super_admin");
+  const companyId = String(formData.get("companyId") ?? "");
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(companyId) || !isUuid(id)) {
+    redirect(`/admin/companies/${companyId}?error=1`);
+  }
+  await db
+    .delete(resources)
+    .where(and(eq(resources.id, id), eq(resources.companyId, companyId)));
+  revalidatePath(`/admin/companies/${companyId}`);
+}
+
 // --- Opening hours (any company) ---
 
 export async function adminAddOpeningHour(formData: FormData): Promise<void> {

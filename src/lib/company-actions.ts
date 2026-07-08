@@ -58,6 +58,16 @@ export async function updateResource(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/resources");
 }
 
+export async function deleteResource(formData: FormData): Promise<void> {
+  const companyId = await currentCompanyId();
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/dashboard/resources?error=1");
+  await db
+    .delete(resources)
+    .where(and(eq(resources.id, id), eq(resources.companyId, companyId)));
+  revalidatePath("/dashboard/resources");
+}
+
 // --- Opening hours ---
 
 export async function addOpeningHour(formData: FormData): Promise<void> {
