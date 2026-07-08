@@ -30,11 +30,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </form>
           </div>
         </div>
-        <div className="mx-auto max-w-5xl px-6 pb-2 pt-3">
-          <DashboardNav />
-        </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-5xl px-6 pb-24 pt-8 md:pb-8">{children}</main>
+      <DashboardNav />
       <DashboardTour />
     </div>
   );
