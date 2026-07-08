@@ -19,7 +19,6 @@ export default async function SettingsPage({
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const widgetUrl = `${appUrl}/embed/${company.slug}`;
-  const snippet = `<iframe src="${widgetUrl}" width="100%" height="700" style="border:0"></iframe>`;
   const brandText = contrastText(company.primaryColor);
   const errorText =
     error === "logo"
@@ -324,28 +323,18 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      <section data-tour="embed" className="space-y-3">
+      <section className="space-y-3">
         <header>
-          <h2 className="text-lg font-semibold text-ink">Incrustar en tu web</h2>
-          <p className="mt-1 text-sm text-muted">Pega este fragmento donde quieras que aparezca el widget de reservas.</p>
+          <h2 className="text-lg font-semibold text-ink">Tu widget de reservas</h2>
+          <p className="mt-1 text-sm text-muted">Comparte este enlace con tus clientes para que puedan reservar.</p>
         </header>
-        <textarea
-          readOnly
-          rows={3}
-          value={snippet}
-          aria-label="Fragmento para incrustar"
-          className="w-full resize-none rounded-xl border border-border bg-surface-2 p-3 font-mono text-xs text-ink"
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <CopyButton text={snippet} label="Copiar código" />
-          <CopyButton text={widgetUrl} label="Copiar enlace directo" />
-        </div>
-        <p className="text-sm text-muted">
-          O enlaza directamente:{" "}
-          <a href={widgetUrl} target="_blank" rel="noreferrer" className="link">
-            {widgetUrl}
+        <div className="card flex flex-wrap items-center gap-4 p-6">
+          <a href={widgetUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+            Abrir widget
           </a>
-        </p>
+          <CopyButton text={widgetUrl} label="Copiar enlace" />
+          <p className="text-xs text-muted break-all">{widgetUrl}</p>
+        </div>
       </section>
     </div>
   );
