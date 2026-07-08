@@ -20,6 +20,7 @@ import {
 } from "@/lib/admin-actions";
 import { adminSaveCancellationPolicy, adminDeleteCancellationPolicy } from "@/lib/cancellation-policy";
 import { isDateStr, COMMON_TZS, formatEuros } from "@/lib/validation";
+import { ConfirmDeleteButton } from "@/app/confirm-delete-button";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "@/app/copy-button";
 import { LogoUploader } from "@/app/logo-uploader";
@@ -410,16 +411,7 @@ export default async function AdminCompanyPage({
             <ul className="card divide-y divide-border">
               {rows.map((r) => (
                   <li key={r.id}>
-                    <form
-                      action={adminUpdateResource}
-                      onSubmit={(e) => {
-                        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-                        if (submitter?.getAttribute("data-confirm") && !confirm("¿Eliminar este recurso? Esta acción no se puede deshacer.")) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className="flex flex-wrap items-center gap-3 p-4"
-                    >
+                    <form action={adminUpdateResource} className="flex flex-wrap items-center gap-3 p-4">
                       <input type="hidden" name="companyId" value={id} />
                       <input type="hidden" name="id" value={r.id} />
                       <input name="name" defaultValue={r.name} aria-label="Nombre" className="input min-w-40 flex-1" />
@@ -437,7 +429,7 @@ export default async function AdminCompanyPage({
                         Activo
                       </label>
                       <button className="btn btn-ghost btn-sm">Guardar</button>
-                      <button formAction={adminDeleteResource} data-confirm className="btn btn-ghost btn-sm text-danger">Eliminar</button>
+                      <ConfirmDeleteButton formAction={adminDeleteResource}>Eliminar</ConfirmDeleteButton>
                     </form>
                   </li>
               ))}
