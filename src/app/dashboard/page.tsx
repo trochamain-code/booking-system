@@ -1,4 +1,4 @@
-import { and, count, eq, gte, lt } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { resources, bookings, openingHours } from "@/lib/schema";
@@ -17,7 +17,9 @@ export default async function OverviewPage() {
   const { start, end } = dayRangeUtc(today, company.timezone);
   const weekEnd = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [[todayCount], [weekCount], [resourceCount], [hoursCount]] = await Promise.all([
+  const now = new Date();
+
+  const [[todayCount], [weekCount], [resourceCount], [hoursCount], historyRows] = await Promise.all([
     db
       .select({ n: count() })
       .from(bookings)
@@ -31,6 +33,20 @@ export default async function OverviewPage() {
       .from(resources)
       .where(and(eq(resources.companyId, companyId), eq(resources.active, true))),
     db.select({ n: count() }).from(openingHours).where(eq(openingHours.companyId, companyId)),
+    db
+      .select({
+        id: bookings.id,
+        startAt: bookings.startAt,
+        customerName: bookings.customerName,
+        partySize: bookings.partySize,
+        status: bookings.status,
+        resourceName: resources.name,
+      })
+      .from(bookings)
+      .innerJoin(resources, eq(bookings.resourceId, resources.id))
+      .where(and(eq(bookings.companyId, companyId), lt(bookings.startAt, now)))
+      .orderBy(desc(bookings.startAt))
+      .limit(10),
   ]);
 
   const stats = [
@@ -112,6 +128,44 @@ export default async function OverviewPage() {
           </Link>
         ))}
       </div>
+
+      {historyRows.length > 0 && (
+        <section data-tour="history" className="space-y-4">
+          <h2 className="text-lg font-semibold text-ink">Historial de reservas</h2>
+          <div className="card divide-y divide-border">
+            {historyRows.map((b) => {
+              const dateStr = new Intl.DateTimeFormat("es-ES", {
+                timeZone: company.timezone,
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).format(b.startAt);
+              return (
+                <div key={b.id} className="flex items-center justify-between px-6 py-3 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-ink truncate">{b.customerName}</p>
+                    <p className="text-muted text-xs">
+                      {b.resourceName} · {b.partySize}{" "}
+                      {b.partySize === 1 ? "persona" : "personas"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-muted">{dateStr}</p>
+                    <p
+                      className={`text-xs font-medium ${
+                        b.status === "confirmed" ? "text-success" : "text-danger"
+                      }`}
+                    >
+                      {b.status === "confirmed" ? "Completada" : "Cancelada"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
