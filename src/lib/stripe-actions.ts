@@ -216,7 +216,10 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   }
 
   if (!sessionUrl) redirect(`${bookHref}&error=payment`);
-  redirect(sessionUrl);
+  // Stripe Checkout refuses to run inside an iframe, and the widget is usually
+  // embedded on the tenant's site. Send the iframe to an interstitial that
+  // navigates the TOP window to Checkout instead of redirecting here directly.
+  redirect(`/embed/${slug}/pay?to=${encodeURIComponent(sessionUrl)}`);
 }
 
 export async function confirmPayment(sessionId: string, token: string, slug: string): Promise<ConfirmPaymentResult> {
