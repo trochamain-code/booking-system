@@ -27,9 +27,13 @@ export function LogoUploader({
   const [preview, setPreview] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleFile(file: File | undefined) {
-    if (!file || pending) return;
+  async function handleFile(file: File | undefined) {
+    if (pending) return;
     setMessage(null);
+    if (!file) {
+      setMessage({ kind: "error", text: "No se pudo leer lo que has soltado. Arrastra un archivo de imagen desde tu equipo." });
+      return;
+    }
     if (!ACCEPT.split(",").includes(file.type)) {
       setMessage({ kind: "error", text: "Formato no admitido. Usa PNG, JPG o WebP." });
       return;
@@ -38,10 +42,22 @@ export function LogoUploader({
       setMessage({ kind: "error", text: "La imagen supera los 2 MB." });
       return;
     }
-    const localUrl = URL.createObjectURL(file);
+
+    // Snapshot the bytes NOW. A dragged-in File is read lazily at POST time and
+    // often points at a temp file (zip window, another app) that no longer
+    // exists by then — Chrome then aborts the request as ERR_FILE_NOT_FOUND.
+    let payload: File;
+    try {
+      payload = new File([await file.arrayBuffer()], file.name, { type: file.type });
+    } catch {
+      setMessage({ kind: "error", text: "No se pudo leer el archivo. Guárdalo en tu equipo y vuelve a intentarlo." });
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(payload);
     setPreview(localUrl);
     const fd = new FormData();
-    fd.set("file", file);
+    fd.set("file", payload);
     if (companyId) fd.set("companyId", companyId);
     startTransition(async () => {
       // A dropped connection (redeploy, tunnel blip) must show a retry message,
@@ -49,7 +65,8 @@ export function LogoUploader({
       let result: UploadLogoResult;
       try {
         result = await action(fd);
-      } catch {
+      } catch (err) {
+        console.error("logo upload request failed:", err);
         result = { ok: false, error: "No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo." };
       }
       if (result.ok) {
@@ -87,7 +104,9 @@ export function LogoUploader({
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          handleFile(e.dataTransfer.files?.[0]);
+          // Some drag sources (zips, other apps) only populate items, not files.
+          const file = e.dataTransfer.files?.[0] ?? e.dataTransfer.items?.[0]?.getAsFile() ?? undefined;
+          handleFile(file);
         }}
         className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed p-4 transition ${
           dragOver ? "border-primary bg-warn-bg" : "border-border hover:border-border-strong"
