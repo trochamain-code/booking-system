@@ -18,6 +18,7 @@ import {
   MAX_NAME_LEN,
   MAX_EMAIL_LEN,
   MAX_PHONE_LEN,
+  MAX_COMMENTS_LEN,
   MAX_PARTY_SIZE,
 } from "./validation";
 
@@ -41,6 +42,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
   const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase();
   const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN) || null;
+  const comments = cleanText(formData.get("comments"), MAX_COMMENTS_LEN) || null;
 
   const bookHref = `/embed/${slug}/book?date=${date}&party=${partySize}&startAt=${encodeURIComponent(startAtIso)}`;
 
@@ -74,6 +76,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
         customerName,
         email,
         phone,
+        comments,
         partySize,
         startAt: new Date(slot.startAt),
         durationMin: company.defaultDurationMin,
@@ -110,6 +113,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
         customerName,
         customerEmail: email,
         customerPhone: phone,
+        customerComments: comments,
         companyName: company.name,
         senderName: company.senderName || company.name,
         logoUrl: company.logoUrl,
@@ -162,6 +166,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
         customerName,
         email,
         phone: phone ?? "",
+        comments: comments ?? "",
         durationMin: String(company.defaultDurationMin),
         token,
       },

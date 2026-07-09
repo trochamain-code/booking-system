@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getBookingByToken } from "@/lib/booking-data";
 import { cancelBooking } from "@/lib/booking-actions";
 import { contrastText } from "@/lib/color";
+import { SubmitButton } from "@/app/submit-button";
+import { XIcon, CalendarIcon } from "@/app/icons";
 
 export default async function CancelPage({
   params,
@@ -47,6 +49,12 @@ export default async function CancelPage({
             </div>
           )}
 
+          <div
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full text-white"
+            style={{ backgroundColor: cancelled ? "var(--color-subtle)" : "var(--brand)" }}
+          >
+            {cancelled ? <XIcon className="h-6 w-6" strokeWidth={2.5} /> : <CalendarIcon className="h-6 w-6" />}
+          </div>
           <h1 className="text-2xl font-semibold text-ink">
             {cancelled ? "Reserva cancelada" : "¿Cancelar tu reserva?"}
           </h1>
@@ -67,7 +75,9 @@ export default async function CancelPage({
           ) : (
             <form action={cancelBooking} className="mt-6">
               <input type="hidden" name="token" value={token} />
-              <button className="btn btn-danger">Sí, cancelar reserva</button>
+              <SubmitButton className="btn btn-danger" pendingText="Cancelando…">
+                Sí, cancelar reserva
+              </SubmitButton>
             </form>
           )}
         </div>

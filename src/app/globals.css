@@ -34,6 +34,13 @@
   --font-sans: var(--font-karla), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Soft-UI elevation — warm, ink-tinted, low-opacity two-layer shadows.
+     Note: --shadow-sm overrides Tailwind's built-in shadow-sm utility (intended). */
+  --shadow-xs: 0 1px 2px rgb(28 25 23 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(28 25 23 / 0.05), 0 2px 6px rgb(28 25 23 / 0.05);
+  --shadow-md: 0 2px 4px rgb(28 25 23 / 0.05), 0 8px 20px rgb(28 25 23 / 0.07);
+  --shadow-lg: 0 4px 8px rgb(28 25 23 / 0.06), 0 16px 40px rgb(28 25 23 / 0.10);
 }
 
 @layer base {
@@ -64,23 +71,51 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+
+  /* Warm radial wash behind auth/centered surfaces — pure decoration, AA-safe. */
+  .canvas-glow {
+    background:
+      radial-gradient(70rem 35rem at 50% -8rem, #fdf3e3 0%, transparent 65%),
+      var(--color-canvas);
   }
 }
 
 @layer components {
   .card {
     @apply rounded-2xl border border-border bg-surface;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 200ms, transform 200ms, border-color 200ms;
+  }
+  /* Interactive/link cards: gentle lift on hover (transform-only → no CLS). */
+  .card-hover:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  /* Loading skeleton block (pulse is disabled under reduced-motion globally). */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-surface-2;
+  }
+
+  /* Accent chip for dashboard stat icons — warm amber tint. */
+  .stat-icon {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warn-bg text-warn;
   }
 
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink;
   }
 
+  /* 16px on mobile: below 16px iOS Safari auto-zooms the page on focus (§5 readable-font-size). */
   .input,
   .select {
-    @apply w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-ink shadow-sm transition placeholder:text-subtle;
+    @apply w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-base text-ink shadow-sm transition placeholder:text-subtle sm:text-sm;
+    touch-action: manipulation;
   }
   .input:hover,
   .select:hover {
@@ -91,26 +126,38 @@
     border-color: var(--color-primary);
   }
 
-  /* min-height 44px meets touch-target-size (a11y §2). */
+  /* min-height 44px meets touch-target-size (a11y §2); active scale gives
+     tap feedback within one frame (§7 scale-feedback, transform-only). */
   .btn {
-    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-150;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-200 active:scale-[0.98] active:shadow-none;
     @apply disabled:cursor-not-allowed disabled:opacity-50;
+    touch-action: manipulation;
   }
+  /* Keeps the 44px touch target on mobile; compact only where a cursor exists. */
   .btn-sm {
-    @apply min-h-9 px-3 text-xs;
+    @apply min-h-11 px-3 text-xs sm:min-h-9;
   }
   .btn-primary {
     background-color: var(--color-primary);
     color: var(--color-on-primary);
+    box-shadow: var(--shadow-xs);
   }
   .btn-primary:hover {
     background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-sm);
   }
   .btn-ghost {
     @apply border border-border bg-surface text-ink;
   }
   .btn-ghost:hover {
     background-color: var(--color-surface-2);
+  }
+  /* Text-style ghost for secondary/destructive row actions. */
+  .btn-danger-ghost {
+    @apply border border-transparent bg-transparent text-danger;
+  }
+  .btn-danger-ghost:hover {
+    background-color: var(--color-danger-bg);
   }
   .btn-danger {
     background-color: var(--color-danger);
@@ -129,6 +176,16 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
+  /* Inline text actions in list rows (Quitar, Cancelar): visually small,
+     but with a full 44px touch target on mobile (§2 touch-target-size). */
+  .row-action {
+    @apply inline-flex min-h-11 cursor-pointer items-center px-2 text-xs text-subtle transition sm:min-h-0 sm:px-1;
+    touch-action: manipulation;
+  }
+  .row-action:hover {
+    color: var(--color-danger);
+  }
+
   /* Tenant-branded controls — colour comes from --brand set on an ancestor.
      Text colour auto-computed via --brand-text (luminance-based). */
   .btn-brand {
@@ -139,14 +196,18 @@
     opacity: 0.92;
   }
   .chip {
-    @apply inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-4 text-sm font-semibold transition duration-150;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-4 text-sm font-semibold tabular-nums transition duration-200 active:scale-[0.97];
     border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    background-color: color-mix(in srgb, var(--brand) 4%, transparent);
     color: var(--brand);
+    touch-action: manipulation;
   }
   .chip:hover {
     background-color: var(--brand);
     border-color: var(--brand);
-    color: #fff;
+    color: var(--brand-text, #fff);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
   }
 }
 
@@ -157,7 +218,7 @@
   color: var(--color-ink);
   padding: 1.25rem;
   max-width: 22rem;
-  box-shadow: 0 10px 40px rgb(28 25 23 / 0.18);
+  box-shadow: var(--shadow-lg);
 }
 .booking-tour .driver-popover-title {
   font-family: var(--font-serif);

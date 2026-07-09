@@ -5,7 +5,9 @@ import { dayRangeUtc } from "@/lib/availability";
 import { staffCancelBooking } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { isDateStr } from "@/lib/validation";
+import { getAvailableDates } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/app/icons";
 import Link from "next/link";
 
 /** Shift a YYYY-MM-DD date string by whole days. */
@@ -22,13 +24,16 @@ export default async function BookingsPage({
 }) {
   const { companyId, company } = await requireCompany();
 
+  const sp = await searchParams;
+
+  const availableDates = await getAvailableDates(company, 2);
+
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  const sp = await searchParams;
   const date = sp.date && isDateStr(sp.date) ? sp.date : today;
 
   const { start, end } = dayRangeUtc(date, company.timezone);
@@ -40,6 +45,7 @@ export default async function BookingsPage({
       customerName: bookings.customerName,
       email: bookings.email,
       phone: bookings.phone,
+      comments: bookings.comments,
       status: bookings.status,
       amountCents: bookings.amountCents,
       resourceName: resources.name,
@@ -75,7 +81,7 @@ export default async function BookingsPage({
             className="btn btn-ghost"
             aria-label="Día anterior"
           >
-            ←
+            <ChevronLeftIcon />
           </Link>
           <Link
             href={`/dashboard/bookings?date=${today}`}
@@ -89,10 +95,10 @@ export default async function BookingsPage({
             className="btn btn-ghost"
             aria-label="Día siguiente"
           >
-            →
+            <ChevronRightIcon />
           </Link>
           <form method="get" className="flex items-end gap-2">
-            <DatePickerField name="date" defaultValue={date} label="Fecha" />
+            <DatePickerField name="date" defaultValue={date} label="Fecha" availableDates={[...availableDates]} />
             <button className="btn btn-ghost">Ver</button>
           </form>
         </div>
@@ -121,6 +127,7 @@ export default async function BookingsPage({
                     {b.email}
                     {b.phone ? ` · ${b.phone}` : ""}
                   </p>
+                  {b.comments && <p className="mt-0.5 text-xs italic text-muted">“{b.comments}”</p>}
                 </div>
                 {b.amountCents !== null && (
                   <span className="badge bg-success-bg text-success">
@@ -132,7 +139,7 @@ export default async function BookingsPage({
                 ) : (
                   <form action={staffCancelBooking}>
                     <input type="hidden" name="id" value={b.id} />
-                    <button className="text-xs text-subtle transition hover:text-danger">Cancelar</button>
+                    <button className="row-action">Cancelar</button>
                   </form>
                 )}
               </li>

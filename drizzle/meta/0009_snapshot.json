@@ -1,6 +1,6 @@
 {
-  "id": "81b01a87-0857-4722-b4f6-4548720223ba",
-  "prevId": "15fb6ba4-b19e-40e5-bd19-0207c3faae48",
+  "id": "4aafffc4-ef78-483d-8be7-211a58ca76ab",
+  "prevId": "81b01a87-0857-4722-b4f6-4548720223ba",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -776,7 +776,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -838,10 +838,17 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {
-        "cancellation_policies_threshold_pos": "CHECK (threshold_minutes >= 0)",
-        "cancellation_policies_refund_range": "CHECK (refund_percent >= 0 AND refund_percent <= 100)"
+        "cancellation_policies_threshold_pos": {
+          "name": "cancellation_policies_threshold_pos",
+          "value": "\"cancellation_policies\".\"threshold_minutes\" >= 0"
+        },
+        "cancellation_policies_refund_range": {
+          "name": "cancellation_policies_refund_range",
+          "value": "\"cancellation_policies\".\"refund_percent\" >= 0 AND \"cancellation_policies\".\"refund_percent\" <= 100"
+        }
       },
-      "isReference": false
+      "isRLSEnabled": false,
+      "policies": {}
     }
   },
   "enums": {

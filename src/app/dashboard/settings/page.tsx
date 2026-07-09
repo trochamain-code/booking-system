@@ -8,6 +8,9 @@ import { contrastText } from "@/lib/color";
 import { CopyButton } from "@/app/copy-button";
 import { LogoUploader } from "@/app/logo-uploader";
 import { uploadCompanyLogo } from "@/lib/upload-actions";
+import { SubmitButton } from "@/app/submit-button";
+import { Toggle } from "@/app/toggle";
+import { ArrowRightIcon } from "@/app/icons";
 
 export default async function SettingsPage({
   searchParams,
@@ -30,11 +33,9 @@ export default async function SettingsPage({
   const widgetUrl = `${appUrl}/embed/${company.slug}`;
   const brandText = contrastText(company.primaryColor);
   const errorText =
-    error === "logo"
-      ? "La URL del logo debe empezar por http:// o https://."
-      : error === "color"
-        ? "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)."
-        : null;
+    error === "color"
+      ? "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)."
+      : null;
 
   const policies = await db
     .select()
@@ -64,23 +65,6 @@ export default async function SettingsPage({
             <legend className="text-sm font-semibold text-ink">Marca visual</legend>
             <LogoUploader logoUrl={company.logoUrl} companyName={company.name} action={uploadCompanyLogo} />
             <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="logoUrl">
-                  O pega una URL externa
-                </label>
-                <input
-                  id="logoUrl"
-                  name="logoUrl"
-                  type="url"
-                  // Remount when the uploader changes the logo so the stale
-                  // defaultValue can't overwrite the fresh URL on form save.
-                  key={company.logoUrl ?? "none"}
-                  defaultValue={company.logoUrl ?? ""}
-                  placeholder="https://…/logo.png"
-                  className="input"
-                />
-                <p className="mt-1 text-xs text-muted">Vacía este campo y guarda para quitar el logo.</p>
-              </div>
               <div>
                 <label className="label" htmlFor="primaryColor">
                   Color principal
@@ -154,7 +138,7 @@ export default async function SettingsPage({
             </div>
           </fieldset>
 
-          <button className="btn btn-primary">Guardar cambios</button>
+          <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
         </form>
       </section>
 
@@ -208,13 +192,9 @@ export default async function SettingsPage({
                 Buscar horarios
               </div>
             </div>
-            <div className="mt-6 flex gap-2">
+            <div className="mt-6 flex flex-wrap gap-2">
               {["19:00", "19:30", "20:00", "20:30", "21:00"].map((t) => (
-                <div
-                  key={t}
-                  className="min-h-11 rounded-xl border px-4 py-2.5 text-sm font-semibold"
-                  style={{ borderColor: "color-mix(in srgb, var(--brand) 40%, transparent)", color: "var(--brand)" }}
-                >
+                <div key={t} className="chip pointer-events-none">
                   {t}
                 </div>
               ))}
@@ -240,16 +220,11 @@ export default async function SettingsPage({
                     : "Las reservas se crean sin cobro, incluso si tienen precio."}
                 </p>
               </div>
-              <button
-                type="submit"
-                className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-border-strong transition-colors"
-                style={{ backgroundColor: stripeRow.stripeEnabled ? "var(--color-primary, #2563eb)" : "var(--color-surface-2, #e5e7eb)" }}
-              >
-                <span
-                  className="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
-                  style={{ transform: stripeRow.stripeEnabled ? "translateX(100%)" : "translateX(0)", marginLeft: "2px" }}
-                />
-              </button>
+              <Toggle
+                submitOnChange
+                defaultChecked={stripeRow.stripeEnabled}
+                label={stripeRow.stripeEnabled ? "Desactivar Stripe" : "Activar Stripe"}
+              />
             </form>
           ) : (
             <p className="text-sm text-muted">
@@ -275,11 +250,15 @@ export default async function SettingsPage({
             {afterBookingRules.length > 0 && (
               <ul className="mt-3 space-y-2">
                 {afterBookingRules.map((rule) => (
-                  <li key={rule.id} className="flex items-center gap-3 text-sm">
-                    <span className="text-ink">Dentro de {rule.thresholdMinutes} min → {rule.refundPercent}% reembolso</span>
+                  <li key={rule.id} className="flex items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 text-ink">
+                      Dentro de {rule.thresholdMinutes} min
+                      <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-subtle" />
+                      {rule.refundPercent}% reembolso
+                    </span>
                     <form action={deleteCancellationPolicy}>
                       <input type="hidden" name="id" value={rule.id} />
-                      <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                      <button className="row-action">Quitar</button>
                     </form>
                   </li>
                 ))}
@@ -302,7 +281,7 @@ export default async function SettingsPage({
                   <option value="100">100%</option>
                 </select>
               </div>
-              <button className="btn btn-ghost btn-sm">Añadir regla</button>
+              <SubmitButton className="btn btn-ghost btn-sm">Añadir regla</SubmitButton>
             </form>
           </div>
 
@@ -314,11 +293,15 @@ export default async function SettingsPage({
             {beforeEventRules.length > 0 && (
               <ul className="mt-3 space-y-2">
                 {beforeEventRules.map((rule) => (
-                  <li key={rule.id} className="flex items-center gap-3 text-sm">
-                    <span className="text-ink">≥ {rule.thresholdMinutes} min antes → {rule.refundPercent}% reembolso</span>
+                  <li key={rule.id} className="flex items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 text-ink">
+                      ≥ {rule.thresholdMinutes} min antes
+                      <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-subtle" />
+                      {rule.refundPercent}% reembolso
+                    </span>
                     <form action={deleteCancellationPolicy}>
                       <input type="hidden" name="id" value={rule.id} />
-                      <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                      <button className="row-action">Quitar</button>
                     </form>
                   </li>
                 ))}
@@ -341,13 +324,13 @@ export default async function SettingsPage({
                   <option value="100">100%</option>
                 </select>
               </div>
-              <button className="btn btn-ghost btn-sm">Añadir regla</button>
+              <SubmitButton className="btn btn-ghost btn-sm">Añadir regla</SubmitButton>
             </form>
           </div>
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section data-tour="embed" className="space-y-3">
         <header>
           <h2 className="text-lg font-semibold text-ink">Tu widget de reservas</h2>
           <p className="mt-1 text-sm text-muted">Comparte este enlace con tus clientes para que puedan reservar.</p>

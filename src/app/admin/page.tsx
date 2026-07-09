@@ -8,6 +8,8 @@ import { companies } from "@/lib/schema";
 import { COMMON_TZS } from "@/lib/validation";
 import { ConfirmForm } from "./confirm-form";
 import { PasswordField } from "../password-field";
+import { SubmitButton } from "@/app/submit-button";
+import { ChevronDownIcon, LogoutIcon } from "@/app/icons";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   created: { text: "Empresa creada.", ok: true },
@@ -32,14 +34,17 @@ export default async function AdminPage({
 
   return (
     <div className="min-h-full">
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border bg-surface shadow-[var(--shadow-xs)]">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-4">
           <div>
             <h1 className="text-lg font-semibold text-ink">Administración</h1>
             <p className="text-xs text-muted">Plataforma · super admin</p>
           </div>
           <form action={logout}>
-            <button className="text-sm text-muted transition hover:text-ink">Cerrar sesión</button>
+            <button className="inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-ink">
+              <LogoutIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Cerrar sesión</span>
+            </button>
           </form>
         </div>
       </header>
@@ -67,7 +72,7 @@ export default async function AdminPage({
             <div className="card divide-y divide-border">
               {rows.map((c) => (
                 <details key={c.id} className="group">
-                  <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-surface-2">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
                     <div
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
                       style={{ backgroundColor: c.primaryColor }}
@@ -87,7 +92,7 @@ export default async function AdminPage({
                     >
                       Gestionar
                     </Link>
-                    <span className="text-xs text-muted transition group-open:rotate-180">&#9660;</span>
+                    <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
                   </summary>
                   <div className="border-t border-border p-4">
                     <form action={updateCompany} className="grid gap-4 sm:grid-cols-2">
@@ -127,7 +132,7 @@ export default async function AdminPage({
                         <input id={`contact-${c.id}`} name="contactInfo" defaultValue={c.contactInfo ?? ""} placeholder="Dirección / teléfono" className="input" />
                       </div>
                       <div className="sm:col-span-2 flex items-center gap-2">
-                        <button className="btn btn-primary">Guardar cambios</button>
+                        <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
                       </div>
                     </form>
                     <ConfirmForm message={`¿Eliminar "${c.name}" definitivamente?`} action={deleteCompany} className="mt-3">
@@ -171,7 +176,7 @@ export default async function AdminPage({
               <PasswordField id="password" name="password" required minLength={8} />
             </div>
             <div className="sm:col-span-2">
-              <button className="btn btn-primary">Crear empresa y propietario</button>
+              <SubmitButton pendingText="Creando…">Crear empresa y propietario</SubmitButton>
             </div>
           </form>
         </section>

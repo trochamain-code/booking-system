@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getCompanyBySlug } from "@/lib/booking-data";
 import { createBookingCheckout } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
+import { SubmitButton } from "@/app/submit-button";
+import { ChevronLeftIcon } from "@/app/icons";
 
 export default async function BookPage({
   params,
@@ -42,9 +44,9 @@ export default async function BookPage({
         <header className="p-5">
           <Link
             href={`/embed/${slug}?date=${date}&party=${party}`}
-            className="text-sm text-muted transition hover:text-ink"
+            className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink"
           >
-            ← Cambiar horario
+            <ChevronLeftIcon className="h-4 w-4" /> Cambiar horario
           </Link>
           <div className="mt-3 flex items-center gap-3">
             {company.logoUrl ? (
@@ -101,7 +103,22 @@ export default async function BookPage({
               </label>
               <input id="phone" name="phone" type="tel" autoComplete="tel" className="input" />
             </div>
-            <button className="btn btn-brand w-full">Confirmar reserva</button>
+            <div>
+              <label className="label" htmlFor="comments">
+                Comentarios (opcional)
+              </label>
+              <textarea
+                id="comments"
+                name="comments"
+                rows={3}
+                maxLength={500}
+                placeholder="Alergias, trona, celebración…"
+                className="input h-auto"
+              />
+            </div>
+            <SubmitButton className="btn btn-brand w-full" pendingText="Confirmando…">
+              Confirmar reserva
+            </SubmitButton>
           </form>
         </div>
       </div>

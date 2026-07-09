@@ -15,6 +15,8 @@ export default function GlobalError({
     console.error("[global error]", error.digest ?? "", error.message);
   }, [error]);
 
+  // Hex values mirror the tokens in globals.css (no CSS is available at this
+  // boundary — it replaces the whole document, stylesheet included).
   return (
     <html lang="es">
       <body
@@ -38,13 +40,14 @@ export default function GlobalError({
             onClick={reset}
             style={{
               marginTop: "1.5rem",
-              padding: "0.5rem 1rem",
-              borderRadius: "0.5rem",
+              padding: "0.625rem 1rem",
+              borderRadius: "0.75rem",
               border: 0,
               background: "#f59e0b",
               color: "#1c1917",
               fontWeight: 600,
               cursor: "pointer",
+              boxShadow: "0 1px 2px rgb(28 25 23 / 0.05)",
             }}
           >
             Reintentar

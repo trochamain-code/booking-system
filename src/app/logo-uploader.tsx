@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { UploadLogoResult } from "@/lib/upload-actions";
+import { ImageIcon } from "@/app/icons";
+import { Spinner } from "@/app/submit-button";
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -117,15 +119,12 @@ export function LogoUploader({
           <img src={shown} alt={`Logo de ${companyName}`} className="h-14 w-14 shrink-0 rounded-xl border border-border object-cover" />
         ) : (
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-subtle" aria-hidden>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="3" />
-              <circle cx="9" cy="9" r="2" />
-              <path d="M21 15l-5-5-9 9" />
-            </svg>
+            <ImageIcon className="h-6 w-6" strokeWidth={1.8} />
           </div>
         )}
         <div className="min-w-0">
-          <p className="text-sm font-medium text-ink">
+          <p className="flex items-center gap-2 text-sm font-medium text-ink">
+            {pending && <Spinner className="h-4 w-4 shrink-0 animate-spin text-muted" />}
             {pending ? "Subiendo…" : "Arrastra tu logo aquí o haz clic para elegirlo"}
           </p>
           <p className="mt-0.5 text-xs text-muted">PNG, JPG o WebP · máximo 2 MB · se guarda al instante</p>

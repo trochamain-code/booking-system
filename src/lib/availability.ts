@@ -68,6 +68,10 @@ export function dayRangeUtc(dateStr: string, tz: string): { start: Date; end: Da
   };
 }
 
+// Bookings may run past closing time; guests just need to start at least this
+// many minutes before close. (E.g. close 23:00 → last bookable slot 22:30.)
+export const LAST_SLOT_BEFORE_CLOSE_MIN = 30;
+
 export function availableSlots(input: AvailabilityInput): Slot[] {
   const { date, partySize, timezone, durationMin, resources, hours, closures, bookings } = input;
   const interval = Math.max(1, input.slotIntervalMin);
@@ -90,7 +94,7 @@ export function availableSlots(input: AvailabilityInput): Slot[] {
   for (const range of ranges) {
     const open = toMinutes(range.openTime);
     const close = toMinutes(range.closeTime);
-    for (let t = open; t + durationMin <= close; t += interval) {
+    for (let t = open; t + LAST_SLOT_BEFORE_CLOSE_MIN <= close; t += interval) {
       const time = fromMinutes(t);
       if (seen.has(time)) continue;
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Karla, Geist_Mono } from "next/font/google";
 import { MuiProvider } from "./mui-provider";
 import "./globals.css";
@@ -22,6 +22,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistema de Reservas",
   description: "Acepta reservas desde cualquier sitio web.",
+};
+
+// viewportFit "cover" exposes env(safe-area-inset-*) so the fixed bottom nav
+// can clear the iPhone home-indicator area. Zoom stays enabled (a11y).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -5,6 +5,9 @@ import { addResource, updateResource, deleteResource } from "@/lib/company-actio
 import { requireCompany } from "@/lib/company";
 import { formatEuros } from "@/lib/validation";
 import { ConfirmDeleteButton } from "@/app/confirm-delete-button";
+import { AutoSaveForm, SavingIndicator } from "@/app/auto-save-form";
+import { SubmitButton } from "@/app/submit-button";
+import { Toggle } from "@/app/toggle";
 
 export default async function ResourcesPage({
   searchParams,
@@ -43,8 +46,10 @@ export default async function ResourcesPage({
       ) : (
         <ul className="card divide-y divide-border">
           {rows.map((r) => (
-            <li key={r.id}>
-              <form action={updateResource} className="flex flex-wrap items-center gap-3 p-4">
+            // Keyed by the row's server values: after each save the row remounts
+            // with fresh server data, so what you see is what got stored.
+            <li key={`${r.id}:${r.name}:${r.capacity}:${r.priceCents}:${r.active}`}>
+              <AutoSaveForm action={updateResource} className="flex flex-wrap items-center gap-3 p-4">
                 <input type="hidden" name="id" value={r.id} />
                 <input name="name" defaultValue={r.name} aria-label="Nombre del recurso" className="input min-w-40 flex-1" />
                 <label className="flex items-center gap-2 text-sm text-muted">
@@ -64,14 +69,13 @@ export default async function ResourcesPage({
                     className="input w-24"
                   />
                 </label>
-                <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
-                  <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
-                  <span className="h-5 w-9 rounded-full border border-border-strong bg-surface-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:border-primary peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                <span className="inline-flex items-center gap-2 text-sm text-muted">
+                  <Toggle name="active" defaultChecked={r.active} label={`Recurso activo: ${r.name}`} />
                   Activo
-                </label>
-                <button className="btn btn-ghost btn-sm">Guardar</button>
+                </span>
+                <SavingIndicator />
                 <ConfirmDeleteButton formAction={deleteResource}>Eliminar</ConfirmDeleteButton>
-              </form>
+              </AutoSaveForm>
             </li>
           ))}
         </ul>
@@ -96,7 +100,7 @@ export default async function ResourcesPage({
           </label>
           <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
         </div>
-        <button className="btn btn-primary">Añadir recurso</button>
+        <SubmitButton className="btn btn-primary w-full sm:w-auto">Añadir recurso</SubmitButton>
       </form>
     </div>
   );

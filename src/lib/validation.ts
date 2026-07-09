@@ -7,6 +7,8 @@
 export const MAX_NAME_LEN = 120;
 export const MAX_EMAIL_LEN = 254; // RFC 5321 upper bound
 export const MAX_PHONE_LEN = 40;
+// Also the Stripe Checkout metadata value limit — comments travel in session metadata.
+export const MAX_COMMENTS_LEN = 500;
 export const MAX_URL_LEN = 2048;
 export const MAX_REASON_LEN = 200;
 export const MAX_PARTY_SIZE = 100;

@@ -1,9 +1,13 @@
-import { and, asc, count, desc, eq, gte, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { resources, bookings, openingHours } from "@/lib/schema";
 import { dayRangeUtc } from "@/lib/availability";
 import { requireCompany } from "@/lib/company";
+import { CalendarIcon, TrendingUpIcon, GridIcon, CheckIcon } from "@/app/icons";
+import { CopyButton } from "@/app/copy-button";
+
+const STAT_ICONS = [CalendarIcon, TrendingUpIcon, GridIcon];
 
 export default async function OverviewPage() {
   const { companyId, company } = await requireCompany();
@@ -55,6 +59,9 @@ export default async function OverviewPage() {
     { label: "Recursos activos", value: resourceCount.n, href: "/dashboard/resources" },
   ];
 
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const widgetUrl = `${appUrl}/embed/${company.slug}`;
+
   const setupSteps = [
     {
       done: resourceCount.n > 0,
@@ -103,7 +110,7 @@ export default async function OverviewPage() {
                     s.done ? "bg-success-bg text-success" : "border border-border-strong text-muted"
                   }`}
                 >
-                  {s.done ? "✓" : i + 1}
+                  {s.done ? <CheckIcon className="h-4 w-4" /> : i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm font-medium ${s.done ? "text-muted line-through" : "text-ink"}`}>{s.title}</p>
@@ -121,13 +128,32 @@ export default async function OverviewPage() {
       )}
 
       <div data-tour="stats" className="grid gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="card p-5 transition hover:border-border-strong">
-            <p className="text-sm text-muted">{s.label}</p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-ink">{s.value}</p>
-          </Link>
-        ))}
+        {stats.map((s, i) => {
+          const Icon = STAT_ICONS[i];
+          return (
+            <Link key={s.label} href={s.href} className="card card-hover flex items-center gap-4 p-5">
+              <span className="stat-icon">
+                <Icon />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm text-muted">{s.label}</p>
+                <p className="text-3xl font-semibold tabular-nums text-ink">{s.value}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
+
+      <section data-tour="widget-link" className="card flex flex-wrap items-center gap-4 p-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-ink">Tu enlace de reservas</p>
+          <p className="mt-0.5 truncate text-xs text-muted">{widgetUrl}</p>
+        </div>
+        <CopyButton text={widgetUrl} label="Copiar enlace" />
+        <a href={widgetUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+          Abrir widget
+        </a>
+      </section>
 
       {historyRows.length > 0 && (
         <section data-tour="history" className="space-y-4">
@@ -150,15 +176,15 @@ export default async function OverviewPage() {
                       {b.partySize === 1 ? "persona" : "personas"}
                     </p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-xs text-muted">{dateStr}</p>
-                    <p
-                      className={`text-xs font-medium ${
-                        b.status === "confirmed" ? "text-success" : "text-danger"
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-xs tabular-nums text-muted">{dateStr}</span>
+                    <span
+                      className={`badge ${
+                        b.status === "confirmed" ? "bg-success-bg text-success" : "bg-danger-bg text-danger"
                       }`}
                     >
                       {b.status === "confirmed" ? "Completada" : "Cancelada"}
-                    </p>
+                    </span>
                   </div>
                 </div>
               );

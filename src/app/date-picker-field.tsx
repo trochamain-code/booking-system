@@ -80,28 +80,14 @@ export function DatePickerField({
             required,
             size: "small",
             variant: "outlined",
+            // Borders/font/radius now come from the app-wide MUI theme in
+            // mui-provider.tsx; only field-local concerns stay here.
             sx: {
               width: "100%",
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                backgroundColor: "var(--color-surface)",
-                fontFamily: "var(--font-sans)",
-                fontSize: "0.875rem",
-              },
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "var(--color-border)",
-              },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "var(--color-border-strong)",
-              },
-              "& .MuiInputLabel-root": {
-                fontFamily: "var(--font-sans)",
-                fontSize: "0.875rem",
-                color: "var(--color-muted)",
-              },
-              "& .MuiSvgIcon-root": {
-                color: "var(--color-muted)",
-              },
+              // 16px on mobile so iOS Safari doesn't auto-zoom on focus.
+              "& .MuiOutlinedInput-root": { fontSize: { xs: "1rem", sm: "0.875rem" } },
+              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--color-border-strong)" },
+              "& .MuiSvgIcon-root": { color: "var(--color-muted)" },
             },
           },
         }}

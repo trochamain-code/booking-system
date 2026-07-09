@@ -90,7 +90,7 @@ export default async function EmbedPage({
             </p>
           )}
 
-          <form method="get" className="flex flex-wrap items-end gap-3">
+          <form method="get" className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
             <div>
               <label className="label" htmlFor="party">
                 Personas
@@ -109,7 +109,7 @@ export default async function EmbedPage({
               </label>
               <DatePickerField name="date" defaultValue={date || today} min={today} label="Fecha" availableDates={[...availableDates]} />
             </div>
-            <button className="btn btn-brand">Buscar horarios</button>
+            <button className="btn btn-brand col-span-2 w-full sm:w-auto">Buscar horarios</button>
           </form>
 
           {slots && (
@@ -141,7 +141,17 @@ export default async function EmbedPage({
           )}
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-subtle">Reservas gestionadas de forma segura</p>
+      <p className="mt-3 text-center text-xs text-subtle">
+        Reservas gestionadas por{" "}
+        <a
+          href="https://host-ia.online"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline transition hover:text-ink"
+        >
+          host.ai
+        </a>
+      </p>
     </main>
   );
 }

@@ -20,6 +20,7 @@ type OwnerNotificationInput = {
   customerName: string;
   customerEmail: string;
   customerPhone: string | null;
+  customerComments: string | null;
   companyName: string;
   senderName: string;
   logoUrl: string | null;
@@ -212,11 +213,13 @@ export async function sendOwnerNotification(input: OwnerNotificationInput): Prom
   const b: Branding = { logoUrl: input.logoUrl, primaryColor: input.primaryColor, companyName: input.companyName, contactInfo: input.contactInfo };
 
   const phoneLine = input.customerPhone ? `Teléfono: ${input.customerPhone}\n` : "";
+  const commentsLine = input.customerComments ? `Comentarios: ${input.customerComments}\n` : "";
   const text =
     `Se ha realizado una nueva reserva en ${input.companyName}.\n\n` +
     `Cliente: ${input.customerName}\n` +
     `Email: ${input.customerEmail}\n` +
     `${phoneLine}` +
+    `${commentsLine}` +
     `Personas: ${input.partySize}\n` +
     `Recurso: ${input.resourceName}\n` +
     `Cuándo: ${when} (${input.timezone})\n\n` +
@@ -238,6 +241,7 @@ export async function sendOwnerNotification(input: OwnerNotificationInput): Prom
       ${infoRow("Cliente", input.customerName)}
       ${infoRow("Email", input.customerEmail)}
       ${infoRow("Teléfono", input.customerPhone ?? "—")}
+      ${input.customerComments ? infoRow("Comentarios", input.customerComments) : ""}
       ${infoRow("Personas", `${input.partySize}`)}
       ${infoRow("Mesa / Área", input.resourceName)}
       ${infoRow("Fecha", when)}

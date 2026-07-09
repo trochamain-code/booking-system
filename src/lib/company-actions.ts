@@ -12,7 +12,6 @@ import {
   cleanText,
   isDateStr,
   isHexColor,
-  isHttpUrl,
   isTimeStr,
   isUuid,
   parseBoundedInt,
@@ -79,6 +78,23 @@ export async function addOpeningHour(formData: FormData): Promise<void> {
     redirect("/dashboard/hours?error=1");
   }
   await db.insert(openingHours).values({ companyId, dayOfWeek, openTime, closeTime });
+  revalidatePath("/dashboard/hours");
+}
+
+export async function updateOpeningHour(formData: FormData): Promise<void> {
+  const companyId = await currentCompanyId();
+  const id = String(formData.get("id") ?? "");
+  const dayOfWeek = parseBoundedInt(formData.get("dayOfWeek"), 0, 6, -1);
+  const openTime = String(formData.get("openTime") ?? "");
+  const closeTime = String(formData.get("closeTime") ?? "");
+  if (!isUuid(id) || dayOfWeek < 0 || dayOfWeek > 6 || !isTimeStr(openTime) || !isTimeStr(closeTime) || openTime >= closeTime) {
+    redirect("/dashboard/hours?error=1");
+  }
+  // Scoped by companyId so one company cannot edit another's hours.
+  await db
+    .update(openingHours)
+    .set({ dayOfWeek, openTime, closeTime })
+    .where(and(eq(openingHours.id, id), eq(openingHours.companyId, companyId)));
   revalidatePath("/dashboard/hours");
 }
 
@@ -216,24 +232,21 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
 
 export async function updateBranding(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
-  const rawLogo = String(formData.get("logoUrl") ?? "").trim();
   const rawColor = String(formData.get("primaryColor") ?? "").trim();
   const rawWelcome = String(formData.get("welcomeText") ?? "").trim();
   const rawSender = String(formData.get("senderName") ?? "").trim();
   const rawContact = String(formData.get("contactInfo") ?? "").trim();
 
-  const logoUrl = rawLogo && isHttpUrl(rawLogo) ? rawLogo : null;
   const primaryColor = isHexColor(rawColor) ? rawColor : DEFAULT_COLOR;
   const welcomeText = rawWelcome || null;
   const senderName = rawSender || "";
   const contactInfo = rawContact || null;
 
-  if (rawLogo && !logoUrl) redirect("/dashboard/settings?error=logo");
   if (rawColor && primaryColor !== rawColor) redirect("/dashboard/settings?error=color");
 
   await db
     .update(companies)
-    .set({ logoUrl, primaryColor, welcomeText, senderName, contactInfo })
+    .set({ primaryColor, welcomeText, senderName, contactInfo })
     .where(eq(companies.id, companyId));
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");

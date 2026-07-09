@@ -30,9 +30,18 @@ test("a weekday with no hours yields no slots", () => {
   assert.deepEqual(times(base({ hours: [{ dayOfWeek: (DOW + 1) % 7, openTime: "18:00", closeTime: "21:00" }] })), []);
 });
 
-test("generates slots within opening hours, excluding ones that overrun close", () => {
-  // 18:00 open, 21:00 close, 60-min slots of 60-min duration -> 18,19,20 (21 would overrun)
+test("generates slots within opening hours up to 30 min before close", () => {
+  // 18:00 open, 21:00 close, 60-min interval -> 18,19,20 (21:00 is not ≥30 min before close)
   assert.deepEqual(times(base()), ["18:00", "19:00", "20:00"]);
+});
+
+test("last slot is 30 min before close even when the duration overruns close", () => {
+  // 90-min duration no longer caps the start time: with a 15-min interval the
+  // last slot is 20:30 (close 21:00 − 30 min), even though it ends at 22:00.
+  const input = base({ durationMin: 90, slotIntervalMin: 15 });
+  const t = times(input);
+  assert.equal(t[t.length - 1], "20:30");
+  assert.ok(!t.includes("20:45"), "20:45 is inside the last 30 min before close");
 });
 
 test("a slot disappears when its only fitting resource is booked over an overlapping window", () => {

@@ -164,6 +164,7 @@ export const bookings = pgTable(
     customerName: text("customer_name").notNull(),
     email: text("email").notNull(),
     phone: text("phone"),
+    comments: text("comments"),
     partySize: integer("party_size").notNull(),
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     durationMin: integer("duration_min").notNull(),

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { SparkleIcon } from "@/app/icons";
 
 const DONE_KEY = "dashboard-tour-done";
 const STEP_KEY = "dashboard-tour-step";
@@ -23,7 +24,7 @@ const STEPS: TourStep[] = [
   {
     path: "/dashboard",
     selector: '[data-tour="nav"]',
-    title: "👋 ¡Bienvenido a tu panel!",
+    title: "¡Bienvenido a tu panel!",
     description:
       "Te enseñamos cómo funciona en un minuto. Con estas pestañas te mueves entre el resumen, las reservas de tus clientes y la configuración de tu negocio.",
   },
@@ -201,7 +202,7 @@ export function TourButton() {
         startTour(0, pathname, router);
       }}
     >
-      <span aria-hidden>✦</span> Guía
+      <SparkleIcon className="h-4 w-4" /> Guía
     </button>
   );
 }

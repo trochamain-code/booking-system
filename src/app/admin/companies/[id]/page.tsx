@@ -27,6 +27,9 @@ import { LogoUploader } from "@/app/logo-uploader";
 import { adminUploadCompanyLogo } from "@/lib/upload-actions";
 import { PasswordField } from "../../../password-field";
 import { DatePickerField } from "../../../date-picker-field";
+import { SubmitButton } from "@/app/submit-button";
+import { Toggle } from "@/app/toggle";
+import { ChevronLeftIcon, ArrowRightIcon, CheckIcon } from "@/app/icons";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -116,10 +119,10 @@ export default async function AdminCompanyPage({
 
   return (
     <div className="min-h-full">
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border bg-surface shadow-[var(--shadow-xs)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="text-sm text-muted transition hover:text-ink">&larr; Volver</Link>
+            <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink"><ChevronLeftIcon className="h-4 w-4" /> Volver</Link>
             <div>
               <h1 className="text-lg font-semibold text-ink">{company.name}</h1>
               <p className="text-xs text-muted">/{company.slug} · {company.timezone}</p>
@@ -200,7 +203,7 @@ export default async function AdminCompanyPage({
               <input id="contact" name="contactInfo" defaultValue={company.contactInfo ?? ""} placeholder="Dirección / teléfono" className="input" />
             </div>
             <div className="sm:col-span-2">
-              <button className="btn btn-primary">Guardar cambios</button>
+              <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
             </div>
           </form>
         </section>
@@ -219,7 +222,7 @@ export default async function AdminCompanyPage({
               <PasswordField id="owner-password" name="password" minLength={8} />
             </div>
             <div className="sm:col-span-2">
-              <button className="btn btn-primary">Actualizar propietario</button>
+              <SubmitButton pendingText="Guardando…">Actualizar propietario</SubmitButton>
             </div>
           </form>
         </section>
@@ -260,10 +263,10 @@ export default async function AdminCompanyPage({
           <form action={updateCompanyStripe} className="card grid gap-4 p-6 sm:grid-cols-2">
             <input type="hidden" name="id" value={company.id} />
             <div className="sm:col-span-2">
-              <label className="flex items-center gap-3">
-                <input type="checkbox" name="stripeEnabled" defaultChecked={company.stripeEnabled} className="h-5 w-5 accent-[var(--color-primary)]" />
+              <div className="flex items-center gap-3">
+                <Toggle name="stripeEnabled" defaultChecked={company.stripeEnabled} label="Activar pagos con Stripe" />
                 <span className="text-sm font-medium text-ink">Activar pagos con Stripe</span>
-              </label>
+              </div>
             </div>
             <div className="sm:col-span-2">
               <label className="label" htmlFor="stripe-secret">Clave secreta (sk_live_... / sk_test_...)</label>
@@ -291,9 +294,9 @@ export default async function AdminCompanyPage({
             {company.stripeSecretKey && (
               <div className="sm:col-span-2 rounded-xl bg-surface-2 px-3 py-2 text-sm">
                 {company.stripeWebhookSecret ? (
-                  <p className="text-success">
-                    Webhook de confirmación configurado ✓ — las reservas pagadas se crean aunque el cliente no vuelva
-                    de Stripe.
+                  <p className="inline-flex items-center gap-1.5 text-success">
+                    <CheckIcon className="h-4 w-4 shrink-0" /> Webhook de confirmación configurado — las reservas pagadas se
+                    crean aunque el cliente no vuelva de Stripe.
                   </p>
                 ) : (
                   <p className="text-warn">
@@ -311,7 +314,7 @@ export default async function AdminCompanyPage({
               </div>
             )}
             <div className="sm:col-span-2">
-              <button className="btn btn-primary">Guardar Stripe</button>
+              <SubmitButton pendingText="Guardando…">Guardar Stripe</SubmitButton>
             </div>
           </form>
         </section>
@@ -327,11 +330,11 @@ export default async function AdminCompanyPage({
                 <ul className="mt-3 space-y-2">
                   {afterBookingRules.map((rule) => (
                     <li key={rule.id} className="flex items-center gap-3 text-sm">
-                      <span className="text-ink">Dentro de {rule.thresholdMinutes} min → {rule.refundPercent}% reembolso</span>
+                      <span className="inline-flex items-center gap-1.5 text-ink">Dentro de {rule.thresholdMinutes} min <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-subtle" /> {rule.refundPercent}% reembolso</span>
                       <form action={adminDeleteCancellationPolicy}>
                         <input type="hidden" name="id" value={rule.id} />
                         <input type="hidden" name="companyId" value={id} />
-                        <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                        <button className="row-action">Quitar</button>
                       </form>
                     </li>
                   ))}
@@ -355,7 +358,7 @@ export default async function AdminCompanyPage({
                     <option value="100">100%</option>
                   </select>
                 </div>
-                <button className="btn btn-ghost btn-sm">Añadir regla</button>
+                <SubmitButton className="btn btn-ghost btn-sm">Añadir regla</SubmitButton>
               </form>
             </div>
 
@@ -366,11 +369,11 @@ export default async function AdminCompanyPage({
                 <ul className="mt-3 space-y-2">
                   {beforeEventRules.map((rule) => (
                     <li key={rule.id} className="flex items-center gap-3 text-sm">
-                      <span className="text-ink">≥ {rule.thresholdMinutes} min antes → {rule.refundPercent}% reembolso</span>
+                      <span className="inline-flex items-center gap-1.5 text-ink">≥ {rule.thresholdMinutes} min antes <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-subtle" /> {rule.refundPercent}% reembolso</span>
                       <form action={adminDeleteCancellationPolicy}>
                         <input type="hidden" name="id" value={rule.id} />
                         <input type="hidden" name="companyId" value={id} />
-                        <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                        <button className="row-action">Quitar</button>
                       </form>
                     </li>
                   ))}
@@ -394,7 +397,7 @@ export default async function AdminCompanyPage({
                     <option value="100">100%</option>
                   </select>
                 </div>
-                <button className="btn btn-ghost btn-sm">Añadir regla</button>
+                <SubmitButton className="btn btn-ghost btn-sm">Añadir regla</SubmitButton>
               </form>
             </div>
           </div>
@@ -423,12 +426,11 @@ export default async function AdminCompanyPage({
                         Precio/plaza (€)
                         <input name="priceEuros" type="number" min={0} step="0.01" defaultValue={formatEuros(r.priceCents)} placeholder="Gratis" aria-label="Precio por plaza en euros" className="input w-24" />
                       </label>
-                      <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm text-muted">
-                        <input type="checkbox" name="active" defaultChecked={r.active} className="peer sr-only" />
-                        <span className="h-5 w-9 rounded-full border border-border-strong bg-surface-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:border-primary peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                      <span className="inline-flex items-center gap-2 text-sm text-muted">
+                        <Toggle name="active" defaultChecked={r.active} label={`Recurso activo: ${r.name}`} />
                         Activo
-                      </label>
-                      <button className="btn btn-ghost btn-sm">Guardar</button>
+                      </span>
+                      <SubmitButton className="btn btn-ghost btn-sm">Guardar</SubmitButton>
                       <ConfirmDeleteButton formAction={adminDeleteResource}>Eliminar</ConfirmDeleteButton>
                     </form>
                   </li>
@@ -449,7 +451,7 @@ export default async function AdminCompanyPage({
               <label className="label" htmlFor="new-resource-price">Precio/plaza (€)</label>
               <input id="new-resource-price" name="priceEuros" type="number" min={0} step="0.01" placeholder="Gratis" className="input w-24" />
             </div>
-            <button className="btn btn-primary">Añadir recurso</button>
+            <SubmitButton className="btn btn-primary">Añadir recurso</SubmitButton>
           </form>
         </section>
 
@@ -469,7 +471,7 @@ export default async function AdminCompanyPage({
                   <form action={adminDeleteOpeningHour} className="ml-auto">
                     <input type="hidden" name="companyId" value={id} />
                     <input type="hidden" name="id" value={h.id} />
-                    <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                    <button className="row-action">Quitar</button>
                   </form>
                 </li>
               ))}
@@ -491,7 +493,7 @@ export default async function AdminCompanyPage({
               <label className="label" htmlFor="closeTime">Cierra</label>
               <input id="closeTime" name="closeTime" type="time" required defaultValue="23:00" className="input w-32" />
             </div>
-            <button className="btn btn-primary">Añadir tramo</button>
+            <SubmitButton className="btn btn-primary">Añadir tramo</SubmitButton>
           </form>
         </section>
 
@@ -507,7 +509,7 @@ export default async function AdminCompanyPage({
                   <form action={adminDeleteClosure} className="ml-auto">
                     <input type="hidden" name="companyId" value={id} />
                     <input type="hidden" name="id" value={c.id} />
-                    <button className="text-xs text-subtle transition hover:text-danger">Quitar</button>
+                    <button className="row-action">Quitar</button>
                   </form>
                 </li>
               ))}
@@ -522,7 +524,7 @@ export default async function AdminCompanyPage({
               <label className="label" htmlFor="closure-reason">Motivo (opcional)</label>
               <input id="closure-reason" name="reason" placeholder="Festivo" className="input" />
             </div>
-            <button className="btn btn-ghost">Añadir cierre</button>
+            <SubmitButton className="btn btn-ghost">Añadir cierre</SubmitButton>
           </form>
         </section>
 
@@ -562,7 +564,7 @@ export default async function AdminCompanyPage({
                       <ConfirmForm message="¿Cancelar esta reserva?" action={adminCancelBooking}>
                         <input type="hidden" name="companyId" value={id} />
                         <input type="hidden" name="id" value={b.id} />
-                        <button className="text-xs text-subtle transition hover:text-danger">Cancelar</button>
+                        <button className="row-action">Cancelar</button>
                       </ConfirmForm>
                     )}
                   </li>

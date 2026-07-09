@@ -3,12 +3,15 @@ import { db } from "@/lib/db";
 import { openingHours, closures } from "@/lib/schema";
 import {
   addOpeningHour,
+  updateOpeningHour,
   deleteOpeningHour,
   addClosure,
   deleteClosure,
 } from "@/lib/company-actions";
 import { requireCompany } from "@/lib/company";
 import { DatePickerField } from "@/app/date-picker-field";
+import { AutoSaveForm, SavingIndicator } from "@/app/auto-save-form";
+import { SubmitButton } from "@/app/submit-button";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -52,17 +55,31 @@ export default async function HoursPage({
         ) : (
           <ul className="card divide-y divide-border">
             {hours.map((h) => (
-              <li key={h.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                <span className="w-28 font-medium text-ink">{DAYS[h.dayOfWeek]}</span>
-                <span className="tabular-nums text-muted">
-                  {h.openTime} – {h.closeTime}
-                </span>
-                <form action={deleteOpeningHour} className="ml-auto">
+              // Keyed by the row's server values: after each save the row remounts
+              // with fresh server data, so what you see is what got stored.
+              <li key={`${h.id}:${h.dayOfWeek}:${h.openTime}:${h.closeTime}`}>
+                <AutoSaveForm action={updateOpeningHour} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
                   <input type="hidden" name="id" value={h.id} />
-                  <button className="text-xs text-subtle transition hover:text-danger" aria-label={`Quitar ${DAYS[h.dayOfWeek]} ${h.openTime}–${h.closeTime}`}>
+                  <select name="dayOfWeek" defaultValue={h.dayOfWeek} aria-label="Día" className="select w-full sm:w-32">
+                    {DAYS.map((d, i) => (
+                      <option key={i} value={i}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <input name="openTime" type="time" required defaultValue={h.openTime} aria-label="Hora de apertura" className="input min-w-0 flex-1 tabular-nums sm:w-32 sm:flex-none" />
+                  <span className="text-muted">–</span>
+                  <input name="closeTime" type="time" required defaultValue={h.closeTime} aria-label="Hora de cierre" className="input min-w-0 flex-1 tabular-nums sm:w-32 sm:flex-none" />
+                  <SavingIndicator className="ml-auto" />
+                  <button
+                    formAction={deleteOpeningHour}
+                    formNoValidate
+                    className="row-action"
+                    aria-label={`Quitar ${DAYS[h.dayOfWeek]} ${h.openTime}–${h.closeTime}`}
+                  >
                     Quitar
                   </button>
-                </form>
+                </AutoSaveForm>
               </li>
             ))}
           </ul>
@@ -93,7 +110,7 @@ export default async function HoursPage({
             </label>
             <input id="closeTime" name="closeTime" type="time" required defaultValue="23:00" className="input w-32" />
           </div>
-          <button className="btn btn-primary">Añadir tramo</button>
+          <SubmitButton className="btn btn-primary w-full sm:w-auto">Añadir tramo</SubmitButton>
         </form>
       </section>
 
@@ -111,7 +128,7 @@ export default async function HoursPage({
                 {c.reason && <span className="text-muted">{c.reason}</span>}
                 <form action={deleteClosure} className="ml-auto">
                   <input type="hidden" name="id" value={c.id} />
-                  <button className="text-xs text-subtle transition hover:text-danger" aria-label={`Quitar cierre ${c.date}`}>
+                  <button className="row-action" aria-label={`Quitar cierre ${c.date}`}>
                     Quitar
                   </button>
                 </form>
@@ -130,7 +147,7 @@ export default async function HoursPage({
             </label>
             <input id="closure-reason" name="reason" placeholder="Festivo" className="input" />
           </div>
-          <button className="btn btn-ghost">Añadir cierre</button>
+          <SubmitButton className="btn btn-ghost w-full sm:w-auto">Añadir cierre</SubmitButton>
         </form>
       </section>
     </div>
