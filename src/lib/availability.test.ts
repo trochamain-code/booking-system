@@ -44,11 +44,27 @@ test("last slot is 30 min before close even when the duration overruns close", (
   assert.ok(!t.includes("20:45"), "20:45 is inside the last 30 min before close");
 });
 
-test("a slot disappears when its only fitting resource is booked over an overlapping window", () => {
+test("a slot disappears when overlapping bookings fill the resource capacity", () => {
   const booked = base({
-    bookings: [{ resourceId: "t2", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60 }],
+    bookings: [{ resourceId: "t2", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60, partySize: 2 }],
   });
   assert.deepEqual(times(booked), ["18:00", "20:00"]);
+});
+
+test("capacity pools: bookings share the resource while party sizes fit", () => {
+  const input = base({
+    partySize: 5,
+    resources: [{ id: "sala", capacity: 25, active: true, priceCents: null }],
+    bookings: [{ resourceId: "sala", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60, partySize: 20 }],
+  });
+  const slots = availableSlots(input);
+  assert.deepEqual(slots.map((s) => s.time), ["18:00", "19:00", "20:00"]);
+  const at19 = slots.find((s) => s.time === "19:00")!;
+  assert.equal(at19.remaining, 5);
+  assert.equal(at19.capacity, 25);
+
+  // One more person than the 5 seats left → the 19:00 slot drops out.
+  assert.deepEqual(times({ ...input, partySize: 6 }), ["18:00", "20:00"]);
 });
 
 test("a booking on a different resource does not block the slot", () => {
@@ -57,7 +73,7 @@ test("a booking on a different resource does not block the slot", () => {
       { id: "t2a", capacity: 2, active: true, priceCents: null },
       { id: "t2b", capacity: 2, active: true, priceCents: null },
     ],
-    bookings: [{ resourceId: "t2a", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60 }],
+    bookings: [{ resourceId: "t2a", startAt: new Date(`${DATE}T19:00:00Z`), durationMin: 60, partySize: 2 }],
   });
   assert.deepEqual(times(input), ["18:00", "19:00", "20:00"]);
 });

@@ -44,41 +44,46 @@ export default async function ResourcesPage({
           <p className="mt-1 text-sm text-muted">Añade el primero abajo para empezar a recibir reservas.</p>
         </div>
       ) : (
-        <ul className="card divide-y divide-border">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (
-            // Keyed by the row's server values: after each save the row remounts
-            // with fresh server data, so what you see is what got stored.
-            <li key={`${r.id}:${r.name}:${r.capacity}:${r.priceCents}:${r.active}`}>
-              <AutoSaveForm action={updateResource} className="flex flex-wrap items-center gap-3 p-4">
+            <div key={`${r.id}:${r.name}:${r.capacity}:${r.priceCents}:${r.active}`} className="card p-4">
+              <AutoSaveForm action={updateResource} className="space-y-3">
                 <input type="hidden" name="id" value={r.id} />
-                <input name="name" defaultValue={r.name} aria-label="Nombre del recurso" className="input min-w-40 flex-1" />
-                <label className="flex items-center gap-2 text-sm text-muted">
-                  Plazas
-                  <input name="capacity" type="number" min={1} defaultValue={r.capacity} aria-label="Aforo" className="input w-20" />
-                </label>
-                <label className="flex items-center gap-2 text-sm text-muted">
-                  Precio/plaza (€)
+                <div>
+                  <label className="label mb-1" htmlFor={`name-${r.id}`}>Recurso</label>
+                  <input id={`name-${r.id}`} name="name" defaultValue={r.name} className="input w-full" />
+                </div>
+                <div>
+                  <label className="label mb-1" htmlFor={`capacity-${r.id}`}>Plazas</label>
+                  <input id={`capacity-${r.id}`} name="capacity" type="number" min={1} defaultValue={r.capacity} className="input w-full" />
+                </div>
+                <div>
+                  <label className="label mb-1" htmlFor={`price-${r.id}`}>Precio / plaza (€)</label>
                   <input
+                    id={`price-${r.id}`}
                     name="priceEuros"
                     type="number"
                     min={0}
                     step="0.01"
                     defaultValue={formatEuros(r.priceCents)}
                     placeholder="Gratis"
-                    aria-label="Precio en euros"
-                    className="input w-24"
+                    className="input w-full"
                   />
-                </label>
-                <span className="inline-flex items-center gap-2 text-sm text-muted">
-                  <Toggle name="active" defaultChecked={r.active} label={`Recurso activo: ${r.name}`} />
-                  Activo
-                </span>
-                <SavingIndicator />
-                <ConfirmDeleteButton formAction={deleteResource}>Eliminar</ConfirmDeleteButton>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="flex items-center gap-2 text-sm text-muted">
+                    <Toggle name="active" defaultChecked={r.active} label={`Recurso activo: ${r.name}`} />
+                    Activo
+                  </span>
+                  <SavingIndicator />
+                  <span className="ml-auto">
+                    <ConfirmDeleteButton formAction={deleteResource} id={r.id}>Eliminar</ConfirmDeleteButton>
+                  </span>
+                </div>
               </AutoSaveForm>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <form action={addResource} data-tour="add-resource" className="card flex flex-wrap items-end gap-3 p-4">

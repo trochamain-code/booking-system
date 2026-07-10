@@ -131,6 +131,9 @@ export default async function EmbedPage({
                           {formatEuros(s.priceCents).replace(".", ",")} €/pers
                         </span>
                       )}
+                      <span className="text-[10px] font-normal opacity-75">
+                        quedan {s.remaining} de {s.capacity}
+                      </span>
                     </Link>
                   ))}
                 </div>

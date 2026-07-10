@@ -357,7 +357,7 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
     .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
     .limit(1);
 
-  await sendCustomerCancellation({
+  if (booking.email) await sendCustomerCancellation({
     to: booking.email,
     customerName: booking.customerName,
     companyName: company.name,

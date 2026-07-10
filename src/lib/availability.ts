@@ -1,7 +1,15 @@
 export type EngineResource = { id: string; capacity: number; active: boolean; priceCents: number | null };
 export type EngineHour = { dayOfWeek: number; openTime: string; closeTime: string };
-export type EngineBooking = { resourceId: string; startAt: Date; durationMin: number };
-export type Slot = { time: string; startAt: string; resourceId: string; priceCents: number | null };
+export type EngineBooking = { resourceId: string; startAt: Date; durationMin: number; partySize: number };
+// remaining/capacity: seats still free on the assigned resource BEFORE this party books.
+export type Slot = {
+  time: string;
+  startAt: string;
+  resourceId: string;
+  priceCents: number | null;
+  remaining: number;
+  capacity: number;
+};
 
 export type AvailabilityInput = {
   date: string; // YYYY-MM-DD (calendar date in the company timezone)
@@ -105,18 +113,36 @@ export function availableSlots(input: AvailabilityInput): Slot[] {
       // Never offer (or accept, via the write-time re-check) a slot in the past.
       if (input.nowMs !== undefined && startMs <= input.nowMs) continue;
 
-      const free = fitting.find(
-        (r) =>
-          !bookings.some(
-            (b) =>
-              b.resourceId === r.id &&
-              b.startAt.getTime() < endMs &&
-              b.startAt.getTime() + b.durationMin * 60_000 > startMs,
-          ),
-      );
+      // Capacity pools: overlapping bookings share the resource, so a slot is
+      // free while the sum of their party sizes leaves room for this party.
+      let free: { resource: EngineResource; remaining: number } | undefined;
+      for (const r of fitting) {
+        let booked = 0;
+        for (const b of bookings) {
+          if (
+            b.resourceId === r.id &&
+            b.startAt.getTime() < endMs &&
+            b.startAt.getTime() + b.durationMin * 60_000 > startMs
+          ) {
+            booked += b.partySize;
+          }
+        }
+        const remaining = r.capacity - booked;
+        if (remaining >= partySize) {
+          free = { resource: r, remaining };
+          break;
+        }
+      }
 
       if (free) {
-        slots.push({ time, startAt: startAt.toISOString(), resourceId: free.id, priceCents: free.priceCents });
+        slots.push({
+          time,
+          startAt: startAt.toISOString(),
+          resourceId: free.resource.id,
+          priceCents: free.resource.priceCents,
+          remaining: free.remaining,
+          capacity: free.resource.capacity,
+        });
         seen.add(time);
       }
     }

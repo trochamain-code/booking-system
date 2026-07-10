@@ -18,7 +18,7 @@ type CustomerConfirmationInput = {
 type OwnerNotificationInput = {
   ownerEmail: string;
   customerName: string;
-  customerEmail: string;
+  customerEmail: string | null;
   customerPhone: string | null;
   customerComments: string | null;
   companyName: string;
@@ -49,7 +49,7 @@ type CustomerCancellationInput = {
 type OwnerCancellationInput = {
   ownerEmail: string;
   customerName: string;
-  customerEmail: string;
+  customerEmail: string | null;
   companyName: string;
   senderName: string;
   logoUrl: string | null;
@@ -217,7 +217,7 @@ export async function sendOwnerNotification(input: OwnerNotificationInput): Prom
   const text =
     `Se ha realizado una nueva reserva en ${input.companyName}.\n\n` +
     `Cliente: ${input.customerName}\n` +
-    `Email: ${input.customerEmail}\n` +
+    `Email: ${input.customerEmail ?? "—"}\n` +
     `${phoneLine}` +
     `${commentsLine}` +
     `Personas: ${input.partySize}\n` +
@@ -239,7 +239,7 @@ export async function sendOwnerNotification(input: OwnerNotificationInput): Prom
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px">
       ${infoRow("Cliente", input.customerName)}
-      ${infoRow("Email", input.customerEmail)}
+      ${infoRow("Email", input.customerEmail ?? "—")}
       ${infoRow("Teléfono", input.customerPhone ?? "—")}
       ${input.customerComments ? infoRow("Comentarios", input.customerComments) : ""}
       ${infoRow("Personas", `${input.partySize}`)}
@@ -309,7 +309,7 @@ export async function sendOwnerCancellation(input: OwnerCancellationInput): Prom
   const text =
     `Una reserva ha sido cancelada en ${input.companyName}.\n\n` +
     `Cliente: ${input.customerName}\n` +
-    `Email: ${input.customerEmail}\n` +
+    `Email: ${input.customerEmail ?? "—"}\n` +
     `Personas: ${input.partySize}\n` +
     `Recurso: ${input.resourceName}\n` +
     `Cuándo: ${when} (${input.timezone})\n`;
@@ -328,7 +328,7 @@ export async function sendOwnerCancellation(input: OwnerCancellationInput): Prom
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px">
       ${infoRow("Cliente", input.customerName)}
-      ${infoRow("Email", input.customerEmail)}
+      ${infoRow("Email", input.customerEmail ?? "—")}
       ${infoRow("Personas", `${input.partySize}`)}
       ${infoRow("Mesa / Área", input.resourceName)}
       ${infoRow("Fecha", when)}

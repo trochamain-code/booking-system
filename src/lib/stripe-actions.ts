@@ -1,11 +1,13 @@
 "use server";
 
 import crypto from "node:crypto";
+import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "./db";
-import { bookings, resources } from "./schema";
+import { resources } from "./schema";
 import { getCompanyBySlug, getAvailability } from "./booking-data";
+import { insertBookingWithCapacityCheck, CapacityConflictError } from "./booking-insert";
 import { sendCustomerConfirmation, sendOwnerNotification } from "./email";
 import { rateLimit, clientIp } from "./rate-limit";
 import { hasPgCode, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION } from "./pg-error";
@@ -28,7 +30,7 @@ function isSlotConflict(err: unknown): boolean {
 
 export type ConfirmPaymentResult =
   | { ok: true; booking: BookingView }
-  | { ok: false; error: "rate" | "invalid_company" | "stripe_error" | "not_paid" | "invalid_token" | "not_found" | "slot_taken"; refunded?: boolean };
+  | { ok: false; error: "rate" | "invalid_company" | "stripe_error" | "not_paid" | "pending" | "invalid_token" | "not_found" | "slot_taken"; refunded?: boolean };
 
 export async function createBookingCheckout(formData: FormData): Promise<void> {
   const ip = await clientIp();
@@ -40,8 +42,8 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   const startAtIso = String(formData.get("startAt") ?? "");
   const partySize = parseInt(String(formData.get("partySize") ?? ""), 10);
   const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
-  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase();
-  const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN) || null;
+  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase() || null;
+  const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN);
   const comments = cleanText(formData.get("comments"), MAX_COMMENTS_LEN) || null;
 
   const bookHref = `/embed/${slug}/book?date=${date}&party=${partySize}&startAt=${encodeURIComponent(startAtIso)}`;
@@ -50,7 +52,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   if (!company) redirect(`/embed/${slug}`);
 
   const validParty = Number.isInteger(partySize) && partySize >= 1 && partySize <= MAX_PARTY_SIZE;
-  if (!customerName || !isValidEmail(email) || !validParty || !isDateStr(date) || !startAtIso) {
+  if (!customerName || !phone || (email !== null && !isValidEmail(email)) || !validParty || !isDateStr(date) || !startAtIso) {
     redirect(`${bookHref}&error=invalid`);
   }
 
@@ -70,7 +72,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
 
   if (!company.stripeEnabled || !resource.priceCents || resource.priceCents < 1) {
     try {
-      await db.insert(bookings).values({
+      await insertBookingWithCapacityCheck({
         companyId: company.id,
         resourceId: slot.resourceId,
         customerName,
@@ -83,7 +85,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
         token,
       });
     } catch (err) {
-      if (isSlotConflict(err)) {
+      if (err instanceof CapacityConflictError || isSlotConflict(err)) {
         redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1`);
       }
       throw err;
@@ -91,7 +93,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
 
     const cancelUrl = `${appUrl}/cancel/${token}`;
 
-    await sendCustomerConfirmation({
+    if (email) await sendCustomerConfirmation({
       to: email,
       customerName,
       companyName: company.name,
@@ -134,10 +136,21 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   if (!stripeSecret) redirect(`${bookHref}&error=payment`);
 
   const stripe = createStripeClient(stripeSecret);
-  let sessionUrl: string | null = null;
-  try {
-    const session = await stripe.checkout.sessions.create({
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
+      // Only these methods are offered in Checkout. "card" must stay in the list:
+      // Apple Pay and Google Pay are wallets on top of the card method, not
+      // standalone payment_method_types, so removing card removes them too.
+      payment_method_types: ["card", "bizum", "amazon_pay", "customer_balance"],
+      // customer_balance = bank transfer. In payment mode it requires a Customer
+      // (customer_creation below) and the EU bank-transfer configuration.
+      payment_method_options: {
+        customer_balance: {
+          funding_type: "bank_transfer",
+          bank_transfer: { type: "eu_bank_transfer", eu_bank_transfer: { country: "ES" } },
+        },
+      },
+      customer_creation: "always",
       line_items: [
         {
           price_data: {
@@ -153,7 +166,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
       ],
       success_url: `${appUrl}/embed/${slug}/confirmed?session_id={CHECKOUT_SESSION_ID}&token=${token}`,
       cancel_url: `${appUrl}/embed/${slug}?date=${date}&party=${partySize}`,
-      customer_email: email,
+      customer_email: email ?? undefined,
       locale: "es",
       // Checkout sessions expire; the booking row is only created after payment in
       // confirmPayment, driven entirely by this metadata (never by client input).
@@ -164,17 +177,34 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
         startAt: startAtIso,
         partySize: String(partySize),
         customerName,
-        email,
-        phone: phone ?? "",
+        email: email ?? "",
+        phone,
         comments: comments ?? "",
         durationMin: String(company.defaultDurationMin),
         token,
       },
-    });
+  };
+
+  let sessionUrl: string | null = null;
+  try {
+    const session = await stripe.checkout.sessions.create(sessionParams);
     sessionUrl = session.url;
   } catch (err) {
-    console.error("stripe checkout create failed:", err);
-    sessionUrl = null;
+    // A tenant account without Bizum / Amazon Pay / bank transfers activated
+    // rejects the whole session. Retry with the account's dashboard defaults
+    // rather than losing the booking; the log tells the operator what to enable.
+    console.error("stripe checkout create failed with restricted payment methods, retrying with account defaults:", err);
+    const fallback = { ...sessionParams };
+    delete fallback.payment_method_types;
+    delete fallback.payment_method_options;
+    delete fallback.customer_creation;
+    try {
+      const session = await stripe.checkout.sessions.create(fallback);
+      sessionUrl = session.url;
+    } catch (err2) {
+      console.error("stripe checkout create failed:", err2);
+      sessionUrl = null;
+    }
   }
 
   if (!sessionUrl) redirect(`${bookHref}&error=payment`);
@@ -214,5 +244,10 @@ export async function confirmPayment(sessionId: string, token: string, slug: str
   const result = await fulfillCheckoutSession(stripe, session, company);
   if (result.ok) return result;
   if (result.error === "bad_metadata") return { ok: false, error: "invalid_token" };
+  // Async methods (bank transfer): the customer finished Checkout but the money
+  // hasn't arrived yet. The async_payment_succeeded webhook creates the booking.
+  if (result.error === "not_paid" && session.status === "complete") {
+    return { ok: false, error: "pending" };
+  }
   return { ok: false, error: result.error, refunded: result.refunded };
 }

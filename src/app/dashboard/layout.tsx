@@ -1,5 +1,6 @@
 import { logout } from "@/lib/actions";
 import { requireCompany } from "@/lib/company";
+import { tzLabel } from "@/lib/validation";
 import { DashboardNav } from "./nav";
 import { DashboardTour, TourButton } from "./tour";
 import { LogoutIcon } from "@/app/icons";
@@ -10,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-full">
       <header className="border-b border-border bg-surface shadow-[var(--shadow-xs)]">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-4 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
@@ -21,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink">{company.name}</p>
-              <p className="truncate text-xs text-muted">{company.timezone}</p>
+              <p className="truncate text-xs text-muted">{tzLabel(company.timezone)}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -35,8 +36,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
       </header>
-      <DashboardNav />
-      <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">{children}</main>
+      <DashboardNav primaryColor={company.primaryColor} />
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">{children}</main>
       <DashboardTour />
     </div>
   );

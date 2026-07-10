@@ -124,8 +124,7 @@ export default async function BookingsPage({
                     </span>
                   </p>
                   <p className="truncate text-xs text-muted">
-                    {b.email}
-                    {b.phone ? ` · ${b.phone}` : ""}
+                    {[b.phone, b.email].filter(Boolean).join(" · ")}
                   </p>
                   {b.comments && <p className="mt-0.5 text-xs italic text-muted">“{b.comments}”</p>}
                 </div>

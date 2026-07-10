@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { updateBranding, toggleStripe } from "@/lib/company-actions";
+import { toggleStripe } from "@/lib/company-actions";
 import { saveCancellationPolicy, deleteCancellationPolicy } from "@/lib/cancellation-policy";
 import { requireCompany } from "@/lib/company";
 import { db } from "@/lib/db";
@@ -11,14 +11,10 @@ import { uploadCompanyLogo } from "@/lib/upload-actions";
 import { SubmitButton } from "@/app/submit-button";
 import { Toggle } from "@/app/toggle";
 import { ArrowRightIcon } from "@/app/icons";
+import { SettingsForm } from "@/app/settings-form";
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+export default async function SettingsPage() {
   const { company } = await requireCompany();
-  const { error } = await searchParams;
 
   const stripeRow = await db
     .select({
@@ -32,10 +28,6 @@ export default async function SettingsPage({
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const widgetUrl = `${appUrl}/embed/${company.slug}`;
   const brandText = contrastText(company.primaryColor);
-  const errorText =
-    error === "color"
-      ? "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)."
-      : null;
 
   const policies = await db
     .select()
@@ -47,20 +39,14 @@ export default async function SettingsPage({
   const beforeEventRules = policies.filter((p) => p.ruleType === "before_event");
 
   return (
-    <div className="max-w-2xl space-y-10">
+    <div className="mx-auto max-w-2xl space-y-10">
       <section className="space-y-5">
         <header>
           <h1 className="text-2xl font-semibold text-ink">Personalización</h1>
           <p className="mt-1 text-sm text-muted">Configura la imagen de tu marca en emails y widget de reservas.</p>
         </header>
 
-        <form action={updateBranding} data-tour="branding" className="card space-y-5 p-6">
-          {errorText && (
-            <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
-              {errorText}
-            </p>
-          )}
-
+        <SettingsForm>
           <fieldset className="space-y-4">
             <legend className="text-sm font-semibold text-ink">Marca visual</legend>
             <LogoUploader logoUrl={company.logoUrl} companyName={company.name} action={uploadCompanyLogo} />
@@ -139,7 +125,7 @@ export default async function SettingsPage({
           </fieldset>
 
           <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
-        </form>
+        </SettingsForm>
       </section>
 
       {/* Live preview */}

@@ -166,3 +166,13 @@ export const AlertTriangleIcon = (p: IconProps) => (
     <line x1="12" y1="17" x2="12.01" y2="17" />
   </Svg>
 );
+
+export const TrashIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+  </Svg>
+);

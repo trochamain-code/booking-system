@@ -76,7 +76,7 @@ export default async function BookPage({
             <p role="alert" className="mb-4 rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
               {sp.error === "payment"
                 ? "No se pudo iniciar el pago. Inténtalo de nuevo o contacta con el establecimiento."
-                : "Introduce tu nombre y un correo válido."}
+                : "Introduce tu nombre, un teléfono y, si lo indicas, un correo válido."}
             </p>
           )}
 
@@ -92,16 +92,16 @@ export default async function BookPage({
               <input id="customerName" name="customerName" required autoComplete="name" className="input" />
             </div>
             <div>
-              <label className="label" htmlFor="email">
-                Correo electrónico
+              <label className="label" htmlFor="phone">
+                Teléfono
               </label>
-              <input id="email" name="email" type="email" required autoComplete="email" className="input" />
+              <input id="phone" name="phone" type="tel" required autoComplete="tel" className="input" />
             </div>
             <div>
-              <label className="label" htmlFor="phone">
-                Teléfono (opcional)
+              <label className="label" htmlFor="email">
+                Correo electrónico (opcional)
               </label>
-              <input id="phone" name="phone" type="tel" autoComplete="tel" className="input" />
+              <input id="email" name="email" type="email" autoComplete="email" className="input" />
             </div>
             <div>
               <label className="label" htmlFor="comments">
@@ -112,7 +112,7 @@ export default async function BookPage({
                 name="comments"
                 rows={3}
                 maxLength={500}
-                placeholder="Alergias, trona, celebración…"
+                placeholder="Alergias, peticiones especiales…"
                 className="input h-auto"
               />
             </div>

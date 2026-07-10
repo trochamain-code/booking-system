@@ -23,6 +23,7 @@ export async function getBookingByToken(token: string) {
       startAt: bookings.startAt,
       partySize: bookings.partySize,
       customerName: bookings.customerName,
+      email: bookings.email,
       companyName: companies.name,
       timezone: companies.timezone,
       slug: companies.slug,
@@ -72,7 +73,7 @@ export async function getAvailability(
     resources: res.map((r) => ({ id: r.id, capacity: r.capacity, active: r.active, priceCents: r.priceCents })),
     hours: hrs.map((h) => ({ dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime })),
     closures: cls.map((c) => c.date),
-    bookings: bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin })),
+    bookings: bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin, partySize: b.partySize })),
     nowMs: Date.now(),
   });
 }
@@ -114,7 +115,7 @@ export async function getAvailableDates(
   const resourcesMapped = res.map((r) => ({ id: r.id, capacity: r.capacity, active: r.active, priceCents: r.priceCents }));
   const hoursMapped = hrs.map((h) => ({ dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime }));
   const allClosures = cls.map((c) => c.date);
-  const allBookings = bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin }));
+  const allBookings = bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin, partySize: b.partySize }));
   const nowMs = Date.now();
 
   const available = new Set<string>();

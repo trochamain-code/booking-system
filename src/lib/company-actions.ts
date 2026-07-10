@@ -197,7 +197,7 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
     .where(and(eq(users.companyId, companyId), eq(users.role, "owner")))
     .limit(1);
 
-  await sendCustomerCancellation({
+  if (booking.email) await sendCustomerCancellation({
     to: booking.email,
     customerName: booking.customerName,
     companyName: company.name,
@@ -230,7 +230,7 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
 
 // --- Branding ---
 
-export async function updateBranding(formData: FormData): Promise<void> {
+export async function updateBranding(prev: unknown, formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const companyId = await currentCompanyId();
   const rawColor = String(formData.get("primaryColor") ?? "").trim();
   const rawWelcome = String(formData.get("welcomeText") ?? "").trim();
@@ -242,7 +242,7 @@ export async function updateBranding(formData: FormData): Promise<void> {
   const senderName = rawSender || "";
   const contactInfo = rawContact || null;
 
-  if (rawColor && primaryColor !== rawColor) redirect("/dashboard/settings?error=color");
+  if (rawColor && primaryColor !== rawColor) return { ok: false, error: "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)." };
 
   await db
     .update(companies)
@@ -250,4 +250,5 @@ export async function updateBranding(formData: FormData): Promise<void> {
     .where(eq(companies.id, companyId));
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
+  return { ok: true };
 }

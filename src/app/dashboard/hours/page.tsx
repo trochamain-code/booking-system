@@ -12,8 +12,11 @@ import { requireCompany } from "@/lib/company";
 import { DatePickerField } from "@/app/date-picker-field";
 import { AutoSaveForm, SavingIndicator } from "@/app/auto-save-form";
 import { SubmitButton } from "@/app/submit-button";
+import { ConfirmDeleteButton } from "@/app/confirm-delete-button";
+import { TrashIcon } from "@/app/icons";
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const DAY_COLORS = ["#EF4444", "#3B82F6", "#06B6D4", "#22C55E", "#84CC16", "#F59E0B", "#8B5CF6"];
 
 export default async function HoursPage({
   searchParams,
@@ -53,64 +56,56 @@ export default async function HoursPage({
             <p className="mt-1 text-sm text-muted">Los clientes no verán disponibilidad hasta que añadas un horario.</p>
           </div>
         ) : (
-          <ul className="card divide-y divide-border">
-            {hours.map((h) => (
-              // Keyed by the row's server values: after each save the row remounts
-              // with fresh server data, so what you see is what got stored.
-              <li key={`${h.id}:${h.dayOfWeek}:${h.openTime}:${h.closeTime}`}>
-                <AutoSaveForm action={updateOpeningHour} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                  <input type="hidden" name="id" value={h.id} />
-                  <select name="dayOfWeek" defaultValue={h.dayOfWeek} aria-label="Día" className="select w-full sm:w-32">
-                    {DAYS.map((d, i) => (
-                      <option key={i} value={i}>
-                        {d}
-                      </option>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
+              const dayHours = hours.filter((h) => h.dayOfWeek === dayOfWeek);
+              if (dayHours.length === 0) return null;
+              return (
+                <div key={dayOfWeek} className="card p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: DAY_COLORS[dayOfWeek] }}>
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: DAY_COLORS[dayOfWeek] }} />
+                    {DAYS[dayOfWeek]}
+                  </h3>
+                  <div className="space-y-3">
+                    {dayHours.map((h) => (
+                      <div key={`${h.id}:${h.openTime}:${h.closeTime}`} className="flex items-center gap-2 text-sm">
+                        <AutoSaveForm action={updateOpeningHour} className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <input type="hidden" name="id" value={h.id} />
+                          <input name="openTime" type="time" required defaultValue={h.openTime} className="input min-w-[4.5rem] flex-1 tabular-nums" />
+                          <span className="text-muted shrink-0">–</span>
+                          <input name="closeTime" type="time" required defaultValue={h.closeTime} className="input min-w-[4.5rem] flex-1 tabular-nums" />
+                          <SavingIndicator className="shrink-0" />
+                        </AutoSaveForm>
+                        <ConfirmDeleteButton formAction={deleteOpeningHour} id={h.id}>
+                          <TrashIcon className="h-4 w-4" />
+                        </ConfirmDeleteButton>
+                      </div>
                     ))}
-                  </select>
-                  <input name="openTime" type="time" required defaultValue={h.openTime} aria-label="Hora de apertura" className="input min-w-0 flex-1 tabular-nums sm:w-32 sm:flex-none" />
-                  <span className="text-muted">–</span>
-                  <input name="closeTime" type="time" required defaultValue={h.closeTime} aria-label="Hora de cierre" className="input min-w-0 flex-1 tabular-nums sm:w-32 sm:flex-none" />
-                  <SavingIndicator className="ml-auto" />
-                  <button
-                    formAction={deleteOpeningHour}
-                    formNoValidate
-                    className="row-action"
-                    aria-label={`Quitar ${DAYS[h.dayOfWeek]} ${h.openTime}–${h.closeTime}`}
-                  >
-                    Quitar
-                  </button>
-                </AutoSaveForm>
-              </li>
-            ))}
-          </ul>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
 
-        <form action={addOpeningHour} data-tour="add-hours" className="card flex flex-wrap items-end gap-3 p-4">
+        <form action={addOpeningHour} data-tour="add-hours" className="card space-y-3 p-4">
           <div>
-            <label className="label" htmlFor="dayOfWeek">
-              Día
-            </label>
-            <select id="dayOfWeek" name="dayOfWeek" className="select">
+            <label className="label" htmlFor="dayOfWeek">Día</label>
+            <select id="dayOfWeek" name="dayOfWeek" className="select w-full">
               {DAYS.map((d, i) => (
-                <option key={i} value={i}>
-                  {d}
-                </option>
+                <option key={i} value={i}>{d}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="openTime">
-              Abre
-            </label>
-            <input id="openTime" name="openTime" type="time" required defaultValue="18:00" className="input w-32" />
+            <label className="label">Horario</label>
+            <div className="flex items-center gap-2">
+              <input id="openTime" name="openTime" type="time" required defaultValue="18:00" className="input flex-1 tabular-nums" />
+              <span className="text-muted shrink-0">–</span>
+              <input id="closeTime" name="closeTime" type="time" required defaultValue="23:00" className="input flex-1 tabular-nums" />
+            </div>
           </div>
-          <div>
-            <label className="label" htmlFor="closeTime">
-              Cierra
-            </label>
-            <input id="closeTime" name="closeTime" type="time" required defaultValue="23:00" className="input w-32" />
-          </div>
-          <SubmitButton className="btn btn-primary w-full sm:w-auto">Añadir tramo</SubmitButton>
+          <SubmitButton className="btn btn-primary w-full">Añadir tramo</SubmitButton>
         </form>
       </section>
 
@@ -129,7 +124,7 @@ export default async function HoursPage({
                 <form action={deleteClosure} className="ml-auto">
                   <input type="hidden" name="id" value={c.id} />
                   <button className="row-action" aria-label={`Quitar cierre ${c.date}`}>
-                    Quitar
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </form>
               </li>

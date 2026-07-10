@@ -17,7 +17,7 @@ async function main() {
       timezone: "Europe/Madrid",
       primaryColor: "#b91c1c",
       slotIntervalMin: 30,
-      defaultDurationMin: 90,
+      defaultDurationMin: 15,
     })
     .returning();
 

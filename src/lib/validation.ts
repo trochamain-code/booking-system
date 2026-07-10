@@ -139,3 +139,23 @@ export const COMMON_TZS = [
   "America/Los_Angeles",
   "UTC",
 ] as const;
+
+const CONTINENT_ES: Record<string, string> = {
+  Europe: "Europa",
+  America: "América",
+  Atlantic: "Atlántico",
+  Asia: "Asia",
+  Africa: "África",
+  Australia: "Australia",
+  Pacific: "Pacífico",
+  Indian: "Índico",
+};
+
+export function tzLabel(tz: string): string {
+  if (tz === "UTC") return "UTC";
+  const idx = tz.indexOf("/");
+  if (idx === -1) return tz;
+  const continent = tz.slice(0, idx);
+  const city = tz.slice(idx + 1).replace(/_/g, " ");
+  return `${CONTINENT_ES[continent] ?? continent}/${city}`;
+}

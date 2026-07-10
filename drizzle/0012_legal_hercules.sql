@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ALTER COLUMN "default_duration_min" SET DEFAULT 15;

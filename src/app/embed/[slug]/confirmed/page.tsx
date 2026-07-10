@@ -32,17 +32,22 @@ export default async function ConfirmedPage({
           ? "El horario elegido dejó de estar disponible mientras completabas el pago. Te hemos devuelto el importe automáticamente — no se te cobrará nada."
           : "El horario elegido dejó de estar disponible mientras completabas el pago. No hemos podido procesar la devolución automáticamente: contacta con el establecimiento para que te devuelvan el importe.",
         not_paid: "El pago no se ha completado, así que la reserva no se ha creado. Puedes intentarlo de nuevo.",
+        pending:
+          "Tu pago está en proceso (las transferencias bancarias pueden tardar). La reserva se confirmará automáticamente en cuanto se reciba el pago; guarda esta página y recárgala más tarde para ver la confirmación.",
         rate: "Demasiadas solicitudes. Espera un momento y recarga esta página.",
       };
       const message =
         messages[result.error] ??
         "No hemos podido verificar el pago en este momento. Recarga esta página en unos segundos; si el problema persiste, contacta con el establecimiento.";
+      const pending = result.error === "pending";
       return (
         <main className="mx-auto max-w-lg p-4 sm:p-6">
           <div className="card overflow-hidden">
             <div style={{ height: "4px", backgroundColor: "var(--color-subtle)" }} />
             <div className="p-8 text-center">
-              <h1 className="text-2xl font-semibold text-ink">No se pudo completar la reserva</h1>
+              <h1 className="text-2xl font-semibold text-ink">
+                {pending ? "Pago en proceso" : "No se pudo completar la reserva"}
+              </h1>
               <p className="mt-4 text-sm text-muted">{message}</p>
               <Link href={`/embed/${slug}`} className="mt-6 inline-block text-sm text-muted underline underline-offset-4 hover:text-ink">
                 Volver a las reservas
@@ -107,14 +112,8 @@ export default async function ConfirmedPage({
           <p className="text-sm text-muted">
             {booking.companyName} · {booking.partySize} personas
           </p>
-          {!cancelled && (
+          {!cancelled && booking.email && (
             <p className="mt-4 text-sm text-muted">Te hemos enviado un correo con los detalles.</p>
-          )}
-
-          {!cancelled && token && (
-            <Link href={`/cancel/${token}`} className="mt-6 inline-block text-sm text-muted underline underline-offset-4 hover:text-ink">
-              Cancelar esta reserva
-            </Link>
           )}
         </div>
       </div>

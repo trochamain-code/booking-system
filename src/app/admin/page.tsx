@@ -5,7 +5,7 @@ import { logout } from "@/lib/actions";
 import { createCompany, updateCompany, deleteCompany } from "@/lib/admin-actions";
 import { db } from "@/lib/db";
 import { companies } from "@/lib/schema";
-import { COMMON_TZS } from "@/lib/validation";
+import { COMMON_TZS, tzLabel } from "@/lib/validation";
 import { ConfirmForm } from "./confirm-form";
 import { PasswordField } from "../password-field";
 import { SubmitButton } from "@/app/submit-button";
@@ -83,7 +83,7 @@ export default async function AdminPage({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-ink">{c.name}</p>
                       <p className="truncate text-xs text-muted">
-                        /{c.slug} · {c.timezone}
+                        /{c.slug} · {tzLabel(c.timezone)}
                       </p>
                     </div>
                     <Link

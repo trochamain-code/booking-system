@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Karla, Geist_Mono } from "next/font/google";
 import { MuiProvider } from "./mui-provider";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const karla = Karla({
@@ -44,6 +45,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <MuiProvider>{children}</MuiProvider>
+        <Toaster position="bottom-center" toastOptions={{ duration: 3000, style: { background: "var(--color-surface)", color: "var(--color-ink)", border: "1px solid var(--color-border)", fontSize: "14px" } }} />
       </body>
     </html>
   );

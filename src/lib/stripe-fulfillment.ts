@@ -4,9 +4,11 @@ import { db } from "./db";
 import { bookings, users, resources, companies, type Company } from "./schema";
 import { sendCustomerConfirmation, sendOwnerNotification } from "./email";
 import { hasPgCode, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION } from "./pg-error";
+import { insertBookingWithCapacityCheck, CapacityConflictError } from "./booking-insert";
 
 export type BookingView = {
   customerName: string;
+  email: string | null;
   companyName: string;
   startAt: Date;
   partySize: number;
@@ -30,6 +32,7 @@ export async function fetchBookingView(token: string): Promise<BookingView | und
   const [booking] = await db
     .select({
       customerName: bookings.customerName,
+      email: bookings.email,
       startAt: bookings.startAt,
       partySize: bookings.partySize,
       status: bookings.status,
@@ -73,7 +76,7 @@ export async function fulfillCheckoutSession(
 
   const meta = session.metadata;
   if (!meta?.token || meta.companyId !== company.id) return { ok: false, error: "bad_metadata" };
-  if (!meta.resourceId || !meta.startAt || !meta.customerName || !meta.email) {
+  if (!meta.resourceId || !meta.startAt || !meta.customerName) {
     return { ok: false, error: "bad_metadata" };
   }
   const token = meta.token;
@@ -84,30 +87,31 @@ export async function fulfillCheckoutSession(
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
 
-  // Insert directly and let the DB unique/exclusion constraints arbitrate. The
-  // customer already paid for this exact slot, so re-running the availability
-  // engine here would wrongly reject slots that started while they were in
-  // Stripe Checkout (and needs the company-local date, which we no longer have).
+  // Insert with the pooled-capacity check rather than re-running the whole
+  // availability engine: the customer already paid for this exact slot, so
+  // re-checking opening hours / nowMs here would wrongly reject slots that
+  // started while they were in Stripe Checkout (and needs the company-local
+  // date, which we no longer have). Only the aforo still has to hold.
   try {
-    await db.insert(bookings).values({
+    await insertBookingWithCapacityCheck({
       companyId: meta.companyId,
       resourceId: meta.resourceId,
       customerName: meta.customerName,
-      email: meta.email,
+      email: meta.email || null,
       phone: meta.phone || null,
       comments: meta.comments || null,
       partySize: parseInt(meta.partySize ?? "1", 10),
       startAt: new Date(meta.startAt),
-      durationMin: parseInt(meta.durationMin ?? "90", 10),
+      durationMin: parseInt(meta.durationMin ?? "15", 10),
       token,
       stripeSessionId: session.id,
       stripePaymentIntentId: paymentIntentId,
       amountCents: session.amount_total,
     });
   } catch (err) {
-    if (!isSlotConflict(err)) throw err;
+    if (!(err instanceof CapacityConflictError) && !isSlotConflict(err)) throw err;
     // Either a concurrent fulfillment (webhook vs confirmed page) inserted the
-    // same token, or the slot was genuinely taken while the customer was paying.
+    // same token, or the aforo filled up while the customer was paying.
     const race = await fetchBookingView(token);
     if (race) return { ok: true, booking: race };
 
@@ -134,7 +138,7 @@ export async function fulfillCheckoutSession(
     .where(eq(resources.id, meta.resourceId))
     .limit(1);
 
-  await sendCustomerConfirmation({
+  if (meta.email) await sendCustomerConfirmation({
     to: meta.email,
     customerName: meta.customerName,
     companyName: company.name,
@@ -154,7 +158,7 @@ export async function fulfillCheckoutSession(
     await sendOwnerNotification({
       ownerEmail: owner,
       customerName: meta.customerName,
-      customerEmail: meta.email,
+      customerEmail: meta.email || null,
       customerPhone: meta.phone || null,
       customerComments: meta.comments || null,
       companyName: company.name,

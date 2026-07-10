@@ -78,6 +78,27 @@
       "when": 1783553791079,
       "tag": "0010_keen_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783613538570,
+      "tag": "0011_shocking_corsair",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783627540529,
+      "tag": "0012_legal_hercules",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783641795479,
+      "tag": "0013_marvelous_iron_lad",
+      "breakpoints": true
     }
   ]
 }

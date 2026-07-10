@@ -19,7 +19,7 @@ import {
   adminUpdateOwner,
 } from "@/lib/admin-actions";
 import { adminSaveCancellationPolicy, adminDeleteCancellationPolicy } from "@/lib/cancellation-policy";
-import { isDateStr, COMMON_TZS, formatEuros } from "@/lib/validation";
+import { isDateStr, COMMON_TZS, formatEuros, tzLabel } from "@/lib/validation";
 import { ConfirmDeleteButton } from "@/app/confirm-delete-button";
 import { ConfirmForm } from "../../confirm-form";
 import { CopyButton } from "@/app/copy-button";
@@ -125,7 +125,7 @@ export default async function AdminCompanyPage({
             <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink"><ChevronLeftIcon className="h-4 w-4" /> Volver</Link>
             <div>
               <h1 className="text-lg font-semibold text-ink">{company.name}</h1>
-              <p className="text-xs text-muted">/{company.slug} · {company.timezone}</p>
+              <p className="text-xs text-muted">/{company.slug} · {tzLabel(company.timezone)}</p>
             </div>
           </div>
         </div>
@@ -431,7 +431,7 @@ export default async function AdminCompanyPage({
                         Activo
                       </span>
                       <SubmitButton className="btn btn-ghost btn-sm">Guardar</SubmitButton>
-                      <ConfirmDeleteButton formAction={adminDeleteResource}>Eliminar</ConfirmDeleteButton>
+                      <ConfirmDeleteButton formAction={adminDeleteResource} id={r.id} fields={{ companyId: id }}>Eliminar</ConfirmDeleteButton>
                     </form>
                   </li>
               ))}

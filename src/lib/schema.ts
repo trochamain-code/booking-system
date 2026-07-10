@@ -28,7 +28,7 @@ export const companies = pgTable(
     senderName: text("sender_name").notNull().default(""),
     contactInfo: text("contact_info"),
     slotIntervalMin: integer("slot_interval_min").notNull().default(15),
-    defaultDurationMin: integer("default_duration_min").notNull().default(90),
+    defaultDurationMin: integer("default_duration_min").notNull().default(15),
     stripeEnabled: boolean("stripe_enabled").notNull().default(false),
     stripeSecretKey: text("stripe_secret_key"),
     stripePublishableKey: text("stripe_publishable_key"),
@@ -162,7 +162,8 @@ export const bookings = pgTable(
       .notNull()
       .references(() => resources.id, { onDelete: "cascade" }),
     customerName: text("customer_name").notNull(),
-    email: text("email").notNull(),
+    // Optional: bookings without an email get no customer emails (confirmation/cancellation).
+    email: text("email"),
     phone: text("phone"),
     comments: text("comments"),
     partySize: integer("party_size").notNull(),
@@ -177,12 +178,11 @@ export const bookings = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // Backstop against the exact-same-slot race; cancelled rows drop out so the slot frees.
-    // (The no_overlap_confirmed EXCLUDE constraint added in migration 0003 is the real
-    // guard against overlapping-but-offset bookings — see that migration.)
-    uniqueIndex("uniq_confirmed_slot")
-      .on(t.resourceId, t.startAt)
-      .where(sql`${t.status} = 'confirmed'`),
+    // Capacity pools: several confirmed bookings may share a resource+slot as
+    // long as their party sizes fit the resource capacity. That rule can't be
+    // a static constraint — insertBookingWithCapacityCheck enforces it inside
+    // a transaction that locks the resource row (migration 0013 dropped the
+    // old uniq_confirmed_slot / no_overlap_confirmed exclusivity constraints).
     // Dashboard & availability read bookings by company within a day window.
     index("bookings_company_start_idx").on(t.companyId, t.startAt),
     index("bookings_company_status_start_idx").on(t.companyId, t.status, t.startAt),

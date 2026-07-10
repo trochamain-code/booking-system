@@ -66,7 +66,7 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, booking.stripeSecretKey);
   }
 
-  await sendCustomerCancellation({
+  if (booking.email) await sendCustomerCancellation({
     to: booking.email,
     customerName: booking.customerName,
     companyName: booking.companyName,
