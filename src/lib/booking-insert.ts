@@ -21,6 +21,7 @@ export type NewBooking = {
   startAt: Date;
   durationMin: number;
   token: string;
+  source?: "widget" | "manual";
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
   amountCents?: number | null;

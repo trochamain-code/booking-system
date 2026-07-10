@@ -170,6 +170,9 @@ export const bookings = pgTable(
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     durationMin: integer("duration_min").notNull(),
     status: bookingStatusEnum("status").notNull().default("confirmed"),
+    // Where the booking came from: the public widget or a staff manual entry
+    // (phone / walk-in). Manual bookings never carry Stripe payment data.
+    source: text("source", { enum: ["widget", "manual"] }).notNull().default("widget"),
     token: text("token").notNull().unique(),
     // Set only on paid bookings: enough to find the charge and refund it.
     stripeSessionId: text("stripe_session_id"),

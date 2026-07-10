@@ -42,6 +42,9 @@ export async function getAvailability(
   company: Company,
   date: string,
   partySize: number,
+  // includePast lets staff record a manual booking for a slot that already
+  // started (e.g. logging tonight's phone reservation after opening).
+  opts: { includePast?: boolean } = {},
 ): Promise<Slot[]> {
   const { start, end } = dayRangeUtc(date, company.timezone);
   // Widen the lower bound by the max possible duration so a long booking that
@@ -74,7 +77,7 @@ export async function getAvailability(
     hours: hrs.map((h) => ({ dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime })),
     closures: cls.map((c) => c.date),
     bookings: bks.map((b) => ({ resourceId: b.resourceId, startAt: b.startAt, durationMin: b.durationMin, partySize: b.partySize })),
-    nowMs: Date.now(),
+    nowMs: opts.includePast ? undefined : Date.now(),
   });
 }
 

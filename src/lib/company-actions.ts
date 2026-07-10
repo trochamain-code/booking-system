@@ -1,5 +1,6 @@
 "use server";
 
+import crypto from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -7,17 +8,24 @@ import { db } from "./db";
 import { resources, openingHours, closures, bookings, companies, users } from "./schema";
 import { requireRole } from "./session";
 import { computeRefundPercent, refundBooking } from "./cancellation-policy";
-import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
+import { sendCustomerCancellation, sendCustomerConfirmation, sendOwnerCancellation } from "./email";
+import { getAvailability } from "./booking-data";
+import { insertBookingWithCapacityCheck, CapacityConflictError } from "./booking-insert";
 import {
   cleanText,
   isDateStr,
   isHexColor,
   isTimeStr,
   isUuid,
+  isValidEmail,
   parseBoundedInt,
   parsePriceEuros,
   MAX_CAPACITY,
+  MAX_COMMENTS_LEN,
+  MAX_EMAIL_LEN,
   MAX_NAME_LEN,
+  MAX_PARTY_SIZE,
+  MAX_PHONE_LEN,
   MAX_REASON_LEN,
 } from "./validation";
 
@@ -146,6 +154,84 @@ export async function deleteClosure(formData: FormData): Promise<void> {
 }
 
 // --- Bookings (staff side) ---
+
+/**
+ * Manual booking entered by staff (phone / walk-in / WhatsApp). Free of charge
+ * — no Stripe involved — but it goes through the same availability lookup and
+ * pooled-capacity insert as the widget, so the day's plazas stay consistent.
+ */
+export async function staffCreateBooking(formData: FormData): Promise<void> {
+  const companyId = await currentCompanyId();
+
+  const date = String(formData.get("date") ?? "");
+  const time = String(formData.get("time") ?? "");
+  const partySize = parseBoundedInt(formData.get("partySize"), 1, MAX_PARTY_SIZE, 0);
+  const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
+  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase() || null;
+  const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN) || null;
+  const comments = cleanText(formData.get("comments"), MAX_COMMENTS_LEN) || null;
+  const notify = formData.get("notify") === "on";
+
+  const back = `/dashboard/bookings?date=${date}`;
+  if (!isDateStr(date) || !isTimeStr(time) || partySize < 1 || !customerName || (email !== null && !isValidEmail(email))) {
+    redirect(`${back}&error=invalid`);
+  }
+
+  const [company] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
+  if (!company) redirect("/login");
+
+  // includePast: staff may log a reservation for a turn that already started.
+  const slots = await getAvailability(company, date, partySize, { includePast: true });
+  const slot = slots.find((s) => s.time === time);
+  if (!slot) redirect(`${back}&error=full`);
+
+  const token = crypto.randomBytes(24).toString("base64url");
+  try {
+    await insertBookingWithCapacityCheck({
+      companyId,
+      resourceId: slot.resourceId,
+      customerName,
+      email,
+      phone,
+      comments,
+      partySize,
+      startAt: new Date(slot.startAt),
+      durationMin: company.defaultDurationMin,
+      token,
+      source: "manual",
+    });
+  } catch (err) {
+    if (err instanceof CapacityConflictError) redirect(`${back}&error=full`);
+    throw err;
+  }
+
+  revalidatePath("/dashboard/bookings");
+
+  if (notify && email) {
+    const [resource] = await db
+      .select({ name: resources.name })
+      .from(resources)
+      .where(eq(resources.id, slot.resourceId))
+      .limit(1);
+    const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+    await sendCustomerConfirmation({
+      to: email,
+      customerName,
+      companyName: company.name,
+      senderName: company.senderName || company.name,
+      logoUrl: company.logoUrl,
+      primaryColor: company.primaryColor,
+      contactInfo: company.contactInfo,
+      timezone: company.timezone,
+      startAt: new Date(slot.startAt),
+      partySize,
+      resourceName: resource?.name ?? "",
+      cancelUrl: `${appUrl}/cancel/${token}`,
+    });
+  }
+
+  redirect(`${back}&created=1`);
+}
 
 export async function staffCancelBooking(formData: FormData): Promise<void> {
   const companyId = await currentCompanyId();
