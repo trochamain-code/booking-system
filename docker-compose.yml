@@ -26,6 +26,10 @@ services:
       # ponytail: dev default so `docker compose up` just works. Override in prod:
       #   export AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
       AUTH_SECRET: ${AUTH_SECRET:-dev_change_me_use_a_real_32_byte_secret_in_prod}
+      # Shared secret for the public integration API (/api/public/*), used by
+      # the WhatsApp bot to read availability and create/cancel bookings.
+      # Empty => the /api/public routes return 503 (disabled).
+      BOOKING_API_KEY: ${BOOKING_API_KEY:-}
       # Public URL served through the Cloudflare tunnel (used for email links, etc.).
       APP_URL: ${APP_URL:-https://booking.host-ia.online}
       NODE_ENV: production
