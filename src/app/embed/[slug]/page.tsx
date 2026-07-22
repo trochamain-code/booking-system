@@ -37,7 +37,9 @@ export default async function EmbedPage({
     day: "2-digit",
   }).format(new Date());
 
-  const party = sp.party ? Math.max(1, Math.min(parseInt(sp.party, 10) || 1, maxPartySize)) : 2;
+  // Negocios de "cita" (aforo 1) reservan siempre para 1 persona: sin selector de comensales.
+  const singleParty = maxPartySize === 1;
+  const party = sp.party ? Math.max(1, Math.min(parseInt(sp.party, 10) || 1, maxPartySize)) : Math.min(2, maxPartySize);
   const date = sp.date && isDateStr(sp.date) ? sp.date : "";
 
   const [slots, availableDates] = await Promise.all([
@@ -62,7 +64,7 @@ export default async function EmbedPage({
         <header className="flex items-center gap-4 p-5">
           {company.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={company.logoUrl} alt="" className="h-12 w-12 rounded-xl object-cover" />
+            <img src={company.logoUrl} alt="" className="h-12 w-auto max-w-[180px] rounded-xl object-contain" />
           ) : (
             <div
               className="flex h-12 w-12 items-center justify-center rounded-xl text-lg font-bold text-white"
@@ -91,18 +93,22 @@ export default async function EmbedPage({
           )}
 
           <form method="get" className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
-            <div>
-              <label className="label" htmlFor="party">
-                Personas
-              </label>
-              <select id="party" name="party" defaultValue={party} className="select">
-                {Array.from({ length: maxPartySize }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {singleParty ? (
+              <input type="hidden" name="party" value={1} />
+            ) : (
+              <div>
+                <label className="label" htmlFor="party">
+                  Personas
+                </label>
+                <select id="party" name="party" defaultValue={party} className="select">
+                  {Array.from({ length: maxPartySize }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="label" htmlFor="date">
                 Fecha
@@ -115,7 +121,7 @@ export default async function EmbedPage({
           {slots && (
             <section className="mt-6">
               <h2 className="mb-3 text-sm font-medium text-muted first-letter:uppercase">
-                {slots.length > 0 ? `${prettyDate} · ${party} personas` : "Sin horarios disponibles"}
+                {slots.length > 0 ? (singleParty ? prettyDate : `${prettyDate} · ${party} personas`) : "Sin horarios disponibles"}
               </h2>
               {slots.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

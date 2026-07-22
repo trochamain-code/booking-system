@@ -51,7 +51,7 @@ export default async function BookPage({
           <div className="mt-3 flex items-center gap-3">
             {company.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={company.logoUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              <img src={company.logoUrl} alt="" className="h-10 w-auto max-w-[150px] rounded-lg object-contain" />
             ) : (
               <div
                 className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
@@ -65,7 +65,7 @@ export default async function BookPage({
               <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
               <p className="mt-0.5 text-sm text-muted">{company.welcomeText || "Reserva tu mesa"}</p>
               <p className="text-sm text-muted first-letter:uppercase">
-                {when} · {party} personas
+                {party > 1 ? `${when} · ${party} personas` : when}
               </p>
             </div>
           </div>
