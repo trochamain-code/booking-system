@@ -11,12 +11,16 @@ import { useEffect } from "react";
 export default function EmbedAutoHeight() {
   useEffect(() => {
     // Medimos el <main> (contenido real del embed). documentElement.scrollHeight
-    // nunca baja del viewport, así que inflaría la altura; el <main> da el alto justo.
+    // nunca baja del viewport, así que inflaría la altura; main.scrollHeight da el
+    // alto justo del contenido. Nunca enviamos 0 (frame transitorio de layout).
     const target = document.querySelector("main") ?? document.body;
     const post = () => {
-      const rect = target.getBoundingClientRect();
-      const height = Math.ceil(rect.height + rect.top * 2);
-      window.parent?.postMessage({ type: "hostia-embed-height", height }, "*");
+      const height = Math.ceil(
+        Math.max(target.scrollHeight, target.getBoundingClientRect().height),
+      );
+      if (height > 0) {
+        window.parent?.postMessage({ type: "hostia-embed-height", height: height + 8 }, "*");
+      }
     };
 
     post();
