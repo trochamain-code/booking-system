@@ -207,36 +207,43 @@ export default async function BookingsPage({
           {rows.map((b) => {
             const cancelled = b.status === "cancelled";
             return (
-              <li key={b.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
-                <span className="w-20 shrink-0 font-medium tabular-nums text-ink">{fmtTime(b.startAt)}</span>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium ${cancelled ? "text-subtle line-through" : "text-ink"}`}>
-                    {b.customerName}
-                    <span className="ml-2 font-normal text-muted">
-                      {b.partySize} pers. · {b.resourceName}
-                    </span>
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    {[b.phone, b.email].filter(Boolean).join(" · ")}
-                  </p>
-                  {b.comments && <p className="mt-0.5 text-xs italic text-muted">“{b.comments}”</p>}
+              <li
+                key={b.id}
+                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1"
+              >
+                <div className="flex min-w-0 items-baseline gap-3 sm:contents">
+                  <span className="w-14 shrink-0 font-medium tabular-nums text-ink sm:w-20">{fmtTime(b.startAt)}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${cancelled ? "text-subtle line-through" : "text-ink"}`}>
+                      {b.customerName}
+                      <span className="ml-2 font-normal text-muted">
+                        {b.partySize} pers. · {b.resourceName}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {[b.phone, b.email].filter(Boolean).join(" · ")}
+                    </p>
+                    {b.comments && <p className="mt-0.5 text-xs italic text-muted">“{b.comments}”</p>}
+                  </div>
                 </div>
-                {b.source === "manual" && (
-                  <span className="badge bg-warn-bg text-warn">Manual</span>
-                )}
-                {b.amountCents !== null && (
-                  <span className="badge bg-success-bg text-success">
-                    Pagada · {(b.amountCents / 100).toFixed(2)} €
-                  </span>
-                )}
-                {cancelled ? (
-                  <span className="badge bg-danger-bg text-danger">Cancelada</span>
-                ) : (
-                  <form action={staffCancelBooking}>
-                    <input type="hidden" name="id" value={b.id} />
-                    <button className="row-action">Cancelar</button>
-                  </form>
-                )}
+                <div className="flex flex-wrap items-center gap-2 pl-[68px] sm:contents sm:pl-0">
+                  {b.source === "manual" && (
+                    <span className="badge bg-warn-bg text-warn">Manual</span>
+                  )}
+                  {b.amountCents !== null && (
+                    <span className="badge bg-success-bg text-success">
+                      Pagada · {(b.amountCents / 100).toFixed(2)} €
+                    </span>
+                  )}
+                  {cancelled ? (
+                    <span className="badge bg-danger-bg text-danger">Cancelada</span>
+                  ) : (
+                    <form action={staffCancelBooking}>
+                      <input type="hidden" name="id" value={b.id} />
+                      <button className="row-action">Cancelar</button>
+                    </form>
+                  )}
+                </div>
               </li>
             );
           })}
