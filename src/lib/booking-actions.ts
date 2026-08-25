@@ -79,15 +79,24 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     partySize: booking.partySize,
   });
 
-  const owners = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(and(eq(users.companyId, booking.companyId), eq(users.role, "owner")))
+  const [notifRow] = await db
+    .select({ notificationEmail: companies.notificationEmail })
+    .from(companies)
+    .where(eq(companies.id, booking.companyId))
     .limit(1);
+  let notifyTo = notifRow?.notificationEmail ?? undefined;
+  if (!notifyTo) {
+    const owners = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(and(eq(users.companyId, booking.companyId), eq(users.role, "owner")))
+      .limit(1);
+    notifyTo = owners[0]?.email;
+  }
 
-  if (owners.length > 0) {
+  if (notifyTo) {
     await sendOwnerCancellation({
-      ownerEmail: owners[0].email,
+      ownerEmail: notifyTo,
       customerName: booking.customerName,
       customerEmail: booking.email,
       companyName: booking.companyName,

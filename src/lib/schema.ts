@@ -27,6 +27,9 @@ export const companies = pgTable(
     welcomeText: text("welcome_text"),
     senderName: text("sender_name").notNull().default(""),
     contactInfo: text("contact_info"),
+    // Dirección a la que llegan los avisos de reserva/cancelación. Si es null,
+    // se usa el email del usuario "owner" de la empresa (comportamiento previo).
+    notificationEmail: text("notification_email"),
     slotIntervalMin: integer("slot_interval_min").notNull().default(15),
     defaultDurationMin: integer("default_duration_min").notNull().default(15),
     stripeEnabled: boolean("stripe_enabled").notNull().default(false),

@@ -322,17 +322,20 @@ export async function updateBranding(prev: unknown, formData: FormData): Promise
   const rawWelcome = String(formData.get("welcomeText") ?? "").trim();
   const rawSender = String(formData.get("senderName") ?? "").trim();
   const rawContact = String(formData.get("contactInfo") ?? "").trim();
+  const rawNotify = String(formData.get("notificationEmail") ?? "").trim();
 
   const primaryColor = isHexColor(rawColor) ? rawColor : DEFAULT_COLOR;
   const welcomeText = rawWelcome || null;
   const senderName = rawSender || "";
   const contactInfo = rawContact || null;
+  const notificationEmail = rawNotify || null;
 
   if (rawColor && primaryColor !== rawColor) return { ok: false, error: "El color debe ser un valor hexadecimal válido (p. ej. #b91c1c)." };
+  if (notificationEmail && !isValidEmail(notificationEmail)) return { ok: false, error: "El correo para avisos de reserva no es válido." };
 
   await db
     .update(companies)
-    .set({ primaryColor, welcomeText, senderName, contactInfo })
+    .set({ primaryColor, welcomeText, senderName, contactInfo, notificationEmail })
     .where(eq(companies.id, companyId));
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");

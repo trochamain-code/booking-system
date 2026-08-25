@@ -90,6 +90,23 @@ export default async function SettingsPage() {
           <fieldset className="space-y-4">
             <legend className="text-sm font-semibold text-ink">Correos electrónicos</legend>
             <div>
+              <label className="label" htmlFor="notificationEmail">
+                Correo para avisos de reserva
+              </label>
+              <input
+                id="notificationEmail"
+                name="notificationEmail"
+                type="email"
+                defaultValue={company.notificationEmail ?? ""}
+                placeholder="tucorreo@ejemplo.com"
+                maxLength={120}
+                className="input"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Dirección a la que llegará el aviso de cada reserva nueva o cancelación. Si se deja vacío, se usa el correo del titular de la cuenta.
+              </p>
+            </div>
+            <div>
               <label className="label" htmlFor="senderName">
                 Nombre del remitente
               </label>

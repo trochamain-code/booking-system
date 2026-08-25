@@ -52,6 +52,14 @@ export async function fetchBookingView(token: string): Promise<BookingView | und
 }
 
 export async function ownerEmail(companyId: string): Promise<string | undefined> {
+  // 1) Dirección configurada en Ajustes → Correos (si la hay).
+  const [company] = await db
+    .select({ notificationEmail: companies.notificationEmail })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  if (company?.notificationEmail) return company.notificationEmail;
+  // 2) Fallback: el email del usuario "owner" de la empresa (comportamiento previo).
   const owners = await db
     .select({ email: users.email })
     .from(users)
