@@ -7,6 +7,7 @@ import { requireCompany } from "@/lib/company";
 import { isDateStr } from "@/lib/validation";
 import { getAvailability, getAvailableDates } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
+import { PhoneField } from "@/app/phone-field";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/app/icons";
 import Link from "next/link";
 
@@ -175,7 +176,7 @@ export default async function BookingsPage({
             </div>
             <div>
               <label className="label" htmlFor="manual-phone">Teléfono</label>
-              <input id="manual-phone" name="phone" type="tel" autoComplete="off" className="input w-full" />
+              <PhoneField id="manual-phone" name="phone" autoComplete="off" />
             </div>
             <div>
               <label className="label" htmlFor="manual-email">Email (opcional)</label>

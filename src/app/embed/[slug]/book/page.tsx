@@ -4,6 +4,7 @@ import { getCompanyBySlug } from "@/lib/booking-data";
 import { createBookingCheckout } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
 import { SubmitButton } from "@/app/submit-button";
+import { PhoneField } from "@/app/phone-field";
 import { ChevronLeftIcon } from "@/app/icons";
 
 export default async function BookPage({
@@ -95,7 +96,7 @@ export default async function BookPage({
               <label className="label" htmlFor="phone">
                 Teléfono
               </label>
-              <input id="phone" name="phone" type="tel" required autoComplete="tel" className="input" />
+              <PhoneField id="phone" name="phone" required />
             </div>
             <div>
               <label className="label" htmlFor="email">

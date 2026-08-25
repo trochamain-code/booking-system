@@ -126,6 +126,44 @@
     border-color: var(--color-primary);
   }
 
+  /* Teléfono con selector de país (react-phone-number-input). Se pinta el borde
+     en el contenedor, no en el <input>, para que bandera + número se lean como
+     un solo campo idéntico a .input. */
+  .phone-field .PhoneInput {
+    @apply flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3.5 py-2.5 shadow-sm transition;
+    min-height: 2.75rem; /* 44px: mismo objetivo táctil que .btn */
+  }
+  .phone-field .PhoneInput:hover {
+    border-color: var(--color-border-strong);
+  }
+  .phone-field .PhoneInput--focus {
+    border-color: var(--color-primary);
+  }
+  .phone-field .PhoneInputInput {
+    @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-base text-ink outline-none placeholder:text-subtle sm:text-sm;
+  }
+  /* El <select> nativo va superpuesto y transparente sobre la bandera: se hereda
+     el tamaño para que el área pulsable cubra bandera + flecha. */
+  .phone-field .PhoneInputCountry {
+    @apply relative flex shrink-0 items-center gap-1.5 self-stretch;
+  }
+  .phone-field .PhoneInputCountryIcon--border {
+    @apply overflow-hidden rounded-[2px] shadow-none ring-1 ring-border;
+  }
+  .phone-field .PhoneInputCountrySelectArrow {
+    @apply opacity-60;
+    color: var(--color-muted);
+  }
+  .phone-field .PhoneInput--focus .PhoneInputCountrySelectArrow {
+    opacity: 1;
+  }
+  /* Las opciones las pinta el SO; solo se fuerza color legible en los temas
+     oscuros de Windows/Linux, donde heredarían el fondo del contenedor. */
+  .phone-field .PhoneInputCountrySelect option {
+    color: #1c1917;
+    background-color: #ffffff;
+  }
+
   /* min-height 44px meets touch-target-size (a11y §2); active scale gives
      tap feedback within one frame (§7 scale-feedback, transform-only). */
   .btn {
