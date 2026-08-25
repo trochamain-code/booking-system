@@ -92,7 +92,7 @@ export default async function EmbedPage({
             </p>
           )}
 
-          <form method="get" className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+          <form method="get" className="grid grid-cols-[auto_1fr] items-end gap-3 sm:flex sm:flex-wrap">
             {singleParty ? (
               <input type="hidden" name="party" value={1} />
             ) : (
@@ -109,7 +109,7 @@ export default async function EmbedPage({
                 </select>
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               <label className="label" htmlFor="date">
                 Fecha
               </label>
