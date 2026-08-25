@@ -113,8 +113,7 @@ export default async function BookingsPage({
             <ChevronRightIcon />
           </Link>
           <form method="get" className="flex items-end gap-2">
-            <DatePickerField name="date" defaultValue={date} label="Fecha" availableDates={[...availableDates]} />
-            <button className="btn btn-ghost">Ver</button>
+            <DatePickerField name="date" defaultValue={date} label="Fecha" availableDates={[...availableDates]} autoSubmit />
           </form>
         </div>
       </header>

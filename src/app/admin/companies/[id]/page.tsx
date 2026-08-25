@@ -536,8 +536,7 @@ export default async function AdminCompanyPage({
               <p className="text-sm text-muted first-letter:uppercase">{todayHeading}</p>
             </div>
             <form method="get" className="flex items-end gap-2">
-              <DatePickerField name="date" defaultValue={date} label="Fecha" />
-              <button className="btn btn-ghost btn-sm">Ver</button>
+              <DatePickerField name="date" defaultValue={date} label="Fecha" autoSubmit />
             </form>
           </header>
           {bookingRows.length === 0 ? (
