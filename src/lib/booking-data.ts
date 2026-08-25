@@ -84,7 +84,7 @@ export async function getAvailability(
 export async function getAvailableDates(
   company: Company,
   partySize: number,
-  daysAhead: number = 60,
+  daysAhead: number = 365,
 ): Promise<Set<string>> {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,

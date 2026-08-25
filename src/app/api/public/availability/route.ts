@@ -42,7 +42,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const daysParam = parseInt(url.searchParams.get("days") ?? "60", 10);
-  const days = Number.isInteger(daysParam) && daysParam > 0 && daysParam <= 120 ? daysParam : 60;
+  const days = Number.isInteger(daysParam) && daysParam > 0 && daysParam <= 365 ? daysParam : 60;
   const dates = await getAvailableDates(company, partySize, days);
   return Response.json({
     slug: company.slug,
