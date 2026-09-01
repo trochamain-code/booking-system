@@ -157,11 +157,58 @@
   .phone-field .PhoneInput--focus .PhoneInputCountrySelectArrow {
     opacity: 1;
   }
-  /* Las opciones las pinta el SO; solo se fuerza color legible en los temas
-     oscuros de Windows/Linux, donde heredarían el fondo del contenedor. */
-  .phone-field .PhoneInputCountrySelect option {
-    color: #1c1917;
-    background-color: #ffffff;
+  /* Botón de país (bandera + flecha) que abre el panel con buscador. */
+  .phone-country-btn {
+    @apply flex h-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-ink;
+    @apply disabled:cursor-default;
+  }
+  .phone-country-btn:focus-visible {
+    outline-offset: 4px;
+  }
+  .phone-country-btn[aria-expanded="true"] .PhoneInputCountrySelectArrow {
+    opacity: 1;
+    color: var(--color-primary);
+  }
+  .phone-country-panel {
+    @apply fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-surface text-ink;
+    box-shadow: var(--shadow-lg);
+  }
+  .phone-country-search {
+    @apply flex shrink-0 items-center gap-2 border-b border-border px-3;
+    color: var(--color-muted);
+  }
+  .phone-country-search svg {
+    @apply size-4 shrink-0;
+  }
+  .phone-country-search input {
+    @apply min-w-0 flex-1 border-0 bg-transparent py-2.5 text-base text-ink outline-none placeholder:text-subtle sm:text-sm;
+  }
+  /* max-height propio (no solo el del panel) para que la lista ya sea scrollable
+     en el primer render y el país elegido se pueda poner a la vista al abrir. */
+  .phone-country-list {
+    @apply m-0 min-h-0 list-none overflow-y-auto overscroll-contain p-1;
+    max-height: 17rem;
+  }
+  .phone-country-list [role="option"] {
+    @apply flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm;
+    min-height: 2.5rem;
+  }
+  .phone-country-list [role="option"][data-active] {
+    background-color: var(--color-surface-2);
+  }
+  .phone-country-list [role="option"][aria-selected="true"] .phone-country-name {
+    @apply font-semibold;
+  }
+  .phone-country-name {
+    @apply min-w-0 flex-1 truncate;
+  }
+  .phone-country-code {
+    @apply shrink-0 tabular-nums;
+    color: var(--color-muted);
+  }
+  .phone-country-empty {
+    @apply px-3 py-4 text-center text-sm;
+    color: var(--color-muted);
   }
 
   /* min-height 44px meets touch-target-size (a11y §2); active scale gives

@@ -5,6 +5,7 @@ import PhoneInput, { isPossiblePhoneNumber, type Country, type Value } from "rea
 import flags from "react-phone-number-input/flags";
 import es from "react-phone-number-input/locale/es.json";
 import "react-phone-number-input/style.css";
+import { PhoneCountrySelect } from "./phone-country-select";
 
 /**
  * Teléfono con selector de país (bandera + prefijo) sobre react-phone-number-input.
@@ -69,6 +70,10 @@ export function PhoneField({
         labels={es}
         defaultCountry={defaultCountry}
         countryCallingCodeEditable={false}
+        // Sin opción "Internacional": con el prefijo bloqueado dejaría el campo en
+        // un estado sin país del que no se puede salir escribiendo.
+        addInternationalOption={false}
+        countrySelectComponent={PhoneCountrySelect}
         value={value}
         onChange={setValue}
         onBlur={() => setTouched(true)}
