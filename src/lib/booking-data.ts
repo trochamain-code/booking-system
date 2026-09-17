@@ -4,6 +4,7 @@ import { companies, resources, openingHours, closures, bookings } from "./schema
 import { availableSlots, dayRangeUtc, weekday, type Slot } from "./availability";
 import { MAX_DURATION_MIN } from "./validation";
 import type { Company } from "./schema";
+import { isBookingDateAllowed, lastBookingDate } from "./booking-window";
 
 function shiftDate(date: string, days: number): string {
   const d = new Date(`${date}T12:00:00Z`);
@@ -46,6 +47,8 @@ export async function getAvailability(
   // started (e.g. logging tonight's phone reservation after opening).
   opts: { includePast?: boolean } = {},
 ): Promise<Slot[]> {
+  if (!isBookingDateAllowed(company.slug, date)) return [];
+
   const { start, end } = dayRangeUtc(date, company.timezone);
   // Widen the lower bound by the max possible duration so a long booking that
   // started before midnight but overlaps today's early slots is still fetched.
@@ -93,7 +96,10 @@ export async function getAvailableDates(
     day: "2-digit",
   }).format(new Date());
 
-  const lastDate = shiftDate(today, daysAhead);
+  if (!isBookingDateAllowed(company.slug, today)) return new Set();
+  const requestedLastDate = shiftDate(today, daysAhead);
+  const cutoff = lastBookingDate(company.slug);
+  const lastDate = cutoff && cutoff < requestedLastDate ? cutoff : requestedLastDate;
   const { start: rangeStart } = dayRangeUtc(today, company.timezone);
   const { end: rangeEnd } = dayRangeUtc(lastDate, company.timezone);
   const overlapStart = new Date(rangeStart.getTime() - MAX_DURATION_MIN * 60_000);
@@ -125,6 +131,7 @@ export async function getAvailableDates(
 
   for (let i = 0; i <= daysAhead; i++) {
     const d = shiftDate(today, i);
+    if (d > lastDate) break;
     if (allClosures.includes(d)) continue;
     if (!hoursMapped.some((h) => h.dayOfWeek === weekday(d))) continue;
 

@@ -58,6 +58,7 @@ export function DatePickerField({
   name,
   defaultValue,
   min,
+  max,
   required,
   label,
   availableDates,
@@ -66,6 +67,7 @@ export function DatePickerField({
   name: string;
   defaultValue?: string;
   min?: string;
+  max?: string;
   required?: boolean;
   label?: string;
   availableDates?: string[];
@@ -117,6 +119,7 @@ export function DatePickerField({
         value={value ? dayjs(value) : null}
         onChange={handleChange}
         minDate={min ? dayjs(min) : undefined}
+        maxDate={max ? dayjs(max) : undefined}
         shouldDisableDate={
           hasAvailability ? (date) => !availableSet.has(date.format("YYYY-MM-DD")) : undefined
         }

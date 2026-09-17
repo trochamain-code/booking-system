@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { resources as resourcesSchema } from "@/lib/schema";
 import { getCompanyBySlug, getAvailability, getAvailableDates } from "@/lib/booking-data";
+import { lastBookingDate } from "@/lib/booking-window";
 import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
 import { contrastText } from "@/lib/color";
@@ -113,7 +114,7 @@ export default async function EmbedPage({
               <label className="label" htmlFor="date">
                 Fecha
               </label>
-              <DatePickerField name="date" defaultValue={date || today} min={today} label="Fecha" availableDates={[...availableDates]} />
+              <DatePickerField name="date" defaultValue={date || today} min={today} max={lastBookingDate(company.slug)} label="Fecha" availableDates={[...availableDates]} />
             </div>
             <button className="btn btn-brand col-span-2 w-full sm:w-auto">Buscar horarios</button>
           </form>

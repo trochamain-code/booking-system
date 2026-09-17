@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { isBookingDateAllowed } from "@/lib/booking-window";
 import { getCompanyBySlug } from "@/lib/booking-data";
 import { createBookingCheckout } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
@@ -20,6 +21,7 @@ export default async function BookPage({
   if (!company) notFound();
 
   const date = sp.date ?? "";
+  if (!isBookingDateAllowed(company.slug, date)) redirect(`/embed/${slug}`);
   const party = Math.max(1, parseInt(sp.party ?? "2", 10) || 2);
   const startAt = sp.startAt ?? "";
 
