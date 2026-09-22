@@ -20,6 +20,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Customer names may contain accented letters, spaces, apostrophes and hyphens,
+// but never digits or other symbols. Keep the minimum length meaningful.
+const PERSON_NAME_RE = /^\p{L}+(?:[\s'’-]+\p{L}+)*$/u;
 // Lenient 8-4-4-4-12 hex — matches exactly what Postgres's uuid type accepts, so
 // any real gen_random_uuid() passes while injection-y strings are rejected. The
 // point is to guard `eq(col, id)` on uuid columns, which otherwise throws
@@ -32,6 +35,10 @@ export function isUuid(v: string): boolean {
 
 export function isValidEmail(v: string): boolean {
   return v.length <= MAX_EMAIL_LEN && EMAIL_RE.test(v);
+}
+
+export function isValidPersonName(v: string): boolean {
+  return v.length >= 3 && v.length <= MAX_NAME_LEN && PERSON_NAME_RE.test(v);
 }
 
 export function isHexColor(v: string): boolean {

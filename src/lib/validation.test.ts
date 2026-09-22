@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   isValidEmail,
+  isValidPersonName,
   isHexColor,
   isDateStr,
   isTimeStr,
@@ -20,6 +21,16 @@ test("isValidEmail", () => {
   assert.equal(isValidEmail("a@b"), false);
   assert.equal(isValidEmail("a b@c.d"), false);
   assert.equal(isValidEmail(`${"x".repeat(250)}@b.co`), false); // over length cap
+});
+
+test("isValidPersonName requires letters and at least 3 characters", () => {
+  assert.equal(isValidPersonName("Ana"), true);
+  assert.equal(isValidPersonName("José Luis"), true);
+  assert.equal(isValidPersonName("Anne-Marie"), true);
+  assert.equal(isValidPersonName("Al"), false);
+  assert.equal(isValidPersonName("Ana2"), false);
+  assert.equal(isValidPersonName("123"), false);
+  assert.equal(isValidPersonName("Ana!"), false);
 });
 
 test("isHexColor accepts #rgb and #rrggbb only", () => {

@@ -172,7 +172,17 @@ export default async function BookingsPage({
             </div>
             <div>
               <label className="label" htmlFor="manual-name">Nombre</label>
-              <input id="manual-name" name="customerName" required autoComplete="off" className="input w-full" />
+            <input
+              id="manual-name"
+              name="customerName"
+              required
+              minLength={3}
+              maxLength={120}
+              pattern="[\\p{L}]+(?:[\\s'’-]+[\\p{L}]+)*"
+              title="Introduce un nombre de al menos 3 caracteres, sin números."
+              autoComplete="off"
+              className="input w-full"
+            />
             </div>
             <div>
               <label className="label" htmlFor="manual-phone">Teléfono</label>

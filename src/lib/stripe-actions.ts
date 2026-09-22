@@ -16,6 +16,7 @@ import { fulfillCheckoutSession, ownerEmail, type BookingView } from "./stripe-f
 import {
   cleanText,
   isValidEmail,
+  isValidPersonName,
   isDateStr,
   MAX_NAME_LEN,
   MAX_EMAIL_LEN,
@@ -52,7 +53,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   if (!company) redirect(`/embed/${slug}`);
 
   const validParty = Number.isInteger(partySize) && partySize >= 1 && partySize <= MAX_PARTY_SIZE;
-  if (!customerName || !phone || (email !== null && !isValidEmail(email)) || !validParty || !isDateStr(date) || !startAtIso) {
+  if (!isValidPersonName(customerName) || !phone || (email !== null && !isValidEmail(email)) || !validParty || !isDateStr(date) || !startAtIso) {
     redirect(`${bookHref}&error=invalid`);
   }
 

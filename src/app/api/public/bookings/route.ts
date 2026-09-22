@@ -10,6 +10,7 @@ import { ownerEmail } from "@/lib/stripe-fulfillment";
 import { hasPgCode, PG_UNIQUE_VIOLATION, PG_EXCLUSION_VIOLATION } from "@/lib/pg-error";
 import {
   isValidEmail,
+  isValidPersonName,
   isDateStr,
   MAX_NAME_LEN,
   MAX_EMAIL_LEN,
@@ -57,7 +58,7 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!slug) return Response.json({ error: "missing_slug" }, { status: 400 });
   const validParty = Number.isInteger(partySize) && partySize >= 1 && partySize <= MAX_PARTY_SIZE;
-  if (!customerName || !phone || !validParty || !isDateStr(date) || !startAtIso) {
+  if (!isValidPersonName(customerName) || !phone || !validParty || !isDateStr(date) || !startAtIso) {
     return Response.json({ error: "invalid_fields" }, { status: 400 });
   }
   if (email !== null && !isValidEmail(email)) {

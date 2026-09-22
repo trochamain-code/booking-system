@@ -92,7 +92,17 @@ export default async function BookPage({
               <label className="label" htmlFor="customerName">
                 Nombre
               </label>
-              <input id="customerName" name="customerName" required autoComplete="name" className="input" />
+              <input
+                id="customerName"
+                name="customerName"
+                required
+                minLength={3}
+                maxLength={120}
+                pattern="[\\p{L}]+(?:[\\s'’-]+[\\p{L}]+)*"
+                title="Introduce un nombre de al menos 3 caracteres, sin números."
+                autoComplete="name"
+                className="input"
+              />
             </div>
             <div>
               <label className="label" htmlFor="phone">

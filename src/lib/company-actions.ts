@@ -18,6 +18,7 @@ import {
   isTimeStr,
   isUuid,
   isValidEmail,
+  isValidPersonName,
   parseBoundedInt,
   parsePriceEuros,
   MAX_CAPACITY,
@@ -173,7 +174,7 @@ export async function staffCreateBooking(formData: FormData): Promise<void> {
   const notify = formData.get("notify") === "on";
 
   const back = `/dashboard/bookings?date=${date}`;
-  if (!isDateStr(date) || !isTimeStr(time) || partySize < 1 || !customerName || (email !== null && !isValidEmail(email))) {
+  if (!isDateStr(date) || !isTimeStr(time) || partySize < 1 || !isValidPersonName(customerName) || (email !== null && !isValidEmail(email))) {
     redirect(`${back}&error=invalid`);
   }
 
