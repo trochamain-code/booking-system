@@ -6,6 +6,7 @@ import { createBookingCheckout } from "@/lib/stripe-actions";
 import { contrastText } from "@/lib/color";
 import { SubmitButton } from "@/app/submit-button";
 import { PhoneField } from "@/app/phone-field";
+import { NameField } from "@/app/name-field";
 import { ChevronLeftIcon } from "@/app/icons";
 
 export default async function BookPage({
@@ -92,14 +93,9 @@ export default async function BookPage({
               <label className="label" htmlFor="customerName">
                 Nombre
               </label>
-              <input
+              <NameField
                 id="customerName"
                 name="customerName"
-                required
-                minLength={3}
-                maxLength={120}
-                pattern="[\\p{L}]+(?:[\\s'’-]+[\\p{L}]+)*"
-                title="Introduce un nombre de al menos 3 caracteres, sin números."
                 autoComplete="name"
                 className="input"
               />

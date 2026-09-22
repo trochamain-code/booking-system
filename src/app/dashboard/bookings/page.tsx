@@ -8,6 +8,7 @@ import { isDateStr } from "@/lib/validation";
 import { getAvailability, getAvailableDates } from "@/lib/booking-data";
 import { DatePickerField } from "@/app/date-picker-field";
 import { PhoneField } from "@/app/phone-field";
+import { NameField } from "@/app/name-field";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/app/icons";
 import Link from "next/link";
 
@@ -172,14 +173,9 @@ export default async function BookingsPage({
             </div>
             <div>
               <label className="label" htmlFor="manual-name">Nombre</label>
-            <input
+            <NameField
               id="manual-name"
               name="customerName"
-              required
-              minLength={3}
-              maxLength={120}
-              pattern="[\\p{L}]+(?:[\\s'’-]+[\\p{L}]+)*"
-              title="Introduce un nombre de al menos 3 caracteres, sin números."
               autoComplete="off"
               className="input w-full"
             />
