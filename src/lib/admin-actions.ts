@@ -9,7 +9,7 @@ import { hashPassword } from "./password";
 import { requireRole } from "./session";
 import { slugify } from "./slug";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
-import { computeRefundPercent, refundBooking } from "./cancellation-policy";
+import { cancelBookingWithRefund } from "./cancel-booking-with-refund";
 import { createCompanyWebhook, deleteCompanyWebhook } from "./stripe";
 import {
   cleanText,
@@ -331,10 +331,14 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
 
   if (!booking) redirect(`/admin/companies/${companyId}?error=1`);
 
-  await db
-    .update(bookings)
-    .set({ status: "cancelled" })
-    .where(and(eq(bookings.id, id), eq(bookings.companyId, companyId)));
+  let result;
+  try {
+    result = await cancelBookingWithRefund(id, companyId);
+  } catch (err) {
+    console.error("Booking cancellation/refund failed:", err);
+    redirect(`/admin/companies/${companyId}?error=refund`);
+  }
+  if (!result.changed) return;
 
   revalidatePath(`/admin/companies/${companyId}`);
 
@@ -343,11 +347,6 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
     .from(companies)
     .where(eq(companies.id, companyId))
     .limit(1);
-
-  const refundPercent = await computeRefundPercent(booking, companyId);
-  if (refundPercent > 0 && booking.stripePaymentIntentId && company.stripeSecretKey && booking.amountCents) {
-    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, company.stripeSecretKey);
-  }
 
   if (!company) return;
 
@@ -358,6 +357,7 @@ export async function adminCancelBooking(formData: FormData): Promise<void> {
     .limit(1);
 
   if (booking.email) await sendCustomerCancellation({
+    refundCents: result.refundCents,
     to: booking.email,
     customerName: booking.customerName,
     companyName: company.name,

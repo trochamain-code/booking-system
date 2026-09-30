@@ -165,7 +165,7 @@ export const bookings = pgTable(
       .notNull()
       .references(() => resources.id, { onDelete: "cascade" }),
     customerName: text("customer_name").notNull(),
-    // Optional: bookings without an email get no customer emails (confirmation/cancellation).
+    // Nullable for historical bookings; new booking entry points require email.
     email: text("email"),
     phone: text("phone"),
     comments: text("comments"),
@@ -176,11 +176,15 @@ export const bookings = pgTable(
     // Where the booking came from: the public widget or a staff manual entry
     // (phone / walk-in). Manual bookings never carry Stripe payment data.
     source: text("source", { enum: ["widget", "manual"] }).notNull().default("widget"),
+    language: text("language", { enum: ["es", "en", "fr", "it"] }).notNull().default("es"),
     token: text("token").notNull().unique(),
     // Set only on paid bookings: enough to find the charge and refund it.
     stripeSessionId: text("stripe_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     amountCents: integer("amount_cents"),
+    // Persist the cancellation quote before contacting Stripe, so retries use the same amount.
+    cancellationRefundCents: integer("cancellation_refund_cents"),
+    stripeRefundId: text("stripe_refund_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

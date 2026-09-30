@@ -1,3 +1,4 @@
+import { bookingLanguage } from "@/lib/booking-locale";
 import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { requireApiKey } from "@/lib/api-auth";
@@ -13,7 +14,6 @@ import {
   isValidPersonName,
   isDateStr,
   MAX_NAME_LEN,
-  MAX_EMAIL_LEN,
   MAX_PHONE_LEN,
   MAX_COMMENTS_LEN,
   MAX_PARTY_SIZE,
@@ -25,7 +25,7 @@ import {
 // WhatsApp can never oversell the same slot.
 //
 //   POST /api/public/bookings
-//   { "slug","date","startAt","partySize","customerName","phone","email?","comments?" }
+//   { "slug","date","startAt","partySize","customerName","phone","email","comments?" }
 //     -> 201 { token, startAt, resourceName, status:"confirmed", cancelUrl }
 //
 // If the company charges online (Stripe), the API does NOT create an unpaid
@@ -52,7 +52,7 @@ export async function POST(req: Request): Promise<Response> {
   const startAtIso = clip(body.startAt, 40);
   const partySize = parseInt(String(body.partySize ?? ""), 10);
   const customerName = clip(body.customerName, MAX_NAME_LEN);
-  const email = clip(body.email, MAX_EMAIL_LEN).toLowerCase() || null;
+  const email = (typeof body.email === "string" ? body.email.trim().toLowerCase() : "");
   const phone = clip(body.phone, MAX_PHONE_LEN);
   const comments = clip(body.comments, MAX_COMMENTS_LEN) || null;
 
@@ -61,7 +61,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!isValidPersonName(customerName) || !phone || !validParty || !isDateStr(date) || !startAtIso) {
     return Response.json({ error: "invalid_fields" }, { status: 400 });
   }
-  if (email !== null && !isValidEmail(email)) {
+  if (!isValidEmail(email)) {
     return Response.json({ error: "invalid_email" }, { status: 400 });
   }
 
@@ -92,9 +92,11 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
+  const language = bookingLanguage(body.language ?? body.lang);
   const token = crypto.randomBytes(24).toString("base64url");
   try {
     await insertBookingWithCapacityCheck({
+      language,
       companyId: company.id,
       resourceId: slot.resourceId,
       customerName,
@@ -115,13 +117,15 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const appUrl = process.env.APP_URL ?? "https://booking.host-ia.online";
-  const cancelUrl = `${appUrl}/cancel/${token}`;
+  const cancelUrl = `${appUrl}/cancel/${token}?lang=${language}`;
 
   // Best-effort notifications: mirror the web flow but never fail the booking
   // if email delivery hiccups (the reservation itself already committed).
   try {
     if (email) {
       await sendCustomerConfirmation({
+        language,
+        companyId: company.id,
         to: email,
         customerName,
         companyName: company.name,

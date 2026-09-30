@@ -125,9 +125,14 @@ export default async function BookingsPage({
           Reserva manual guardada — las plazas del día quedan actualizadas.
         </p>
       )}
+      {sp.error === "refund" && (
+        <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
+          No se pudo completar el reembolso. La reserva sigue activa; vuelve a intentar la cancelación.
+        </p>
+      )}
       {sp.error === "invalid" && (
         <p role="alert" className="rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn">
-          Revisa los datos: hacen falta al menos fecha, hora, personas y nombre (y un email válido si lo indicas).
+          Revisa los datos: hacen falta al menos fecha, hora, personas y nombre y un email válido.
         </p>
       )}
       {sp.error === "full" && (
@@ -185,8 +190,8 @@ export default async function BookingsPage({
               <PhoneField id="manual-phone" name="phone" autoComplete="off" />
             </div>
             <div>
-              <label className="label" htmlFor="manual-email">Email (opcional)</label>
-              <input id="manual-email" name="email" type="email" autoComplete="off" className="input w-full" />
+              <label className="label" htmlFor="manual-email">Email</label>
+              <input id="manual-email" name="email" type="email" required maxLength={254} autoComplete="off" className="input w-full" />
             </div>
             <div>
               <label className="label" htmlFor="manual-comments">Comentarios</label>
@@ -195,7 +200,7 @@ export default async function BookingsPage({
             <div className="flex items-end justify-between gap-3 sm:col-span-3">
               <label className="flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" name="notify" defaultChecked className="h-4 w-4" />
-                Enviar confirmación por email (si hay email)
+                Enviar confirmación por email
               </label>
               <button className="btn btn-primary">Guardar reserva</button>
             </div>

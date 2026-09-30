@@ -1,3 +1,4 @@
+import { bookingLanguage, translator, intlLocale, localizedCompanyText, money } from "@/lib/booking-locale";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq, desc } from "drizzle-orm";
@@ -8,17 +9,18 @@ import { lastBookingDate } from "@/lib/booking-window";
 import { DatePickerField } from "@/app/date-picker-field";
 import { isDateStr } from "@/lib/validation";
 import { contrastText } from "@/lib/color";
-import { formatEuros } from "@/lib/validation";
 
 export default async function EmbedPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ date?: string; party?: string; taken?: string; error?: string }>;
+  searchParams: Promise<{ lang?: string; date?: string; party?: string; taken?: string; error?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  const lang = bookingLanguage(sp.lang);
+  const t = translator(lang);
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
@@ -49,7 +51,7 @@ export default async function EmbedPage({
   ]);
 
   const prettyDate = date
-    ? new Intl.DateTimeFormat("es-ES", {
+    ? new Intl.DateTimeFormat(intlLocale[lang], {
         timeZone: company.timezone,
         weekday: "long",
         day: "numeric",
@@ -58,7 +60,7 @@ export default async function EmbedPage({
     : "";
 
   return (
-    <main className="mx-auto max-w-lg p-4 sm:p-6" style={{ ["--brand" as string]: company.primaryColor, ["--brand-text" as string]: contrastText(company.primaryColor) }}>
+    <main lang={lang} className="mx-auto max-w-lg p-4 sm:p-6" style={{ ["--brand" as string]: company.primaryColor, ["--brand-text" as string]: contrastText(company.primaryColor) }}>
       <div className="card overflow-hidden">
         <div style={{ height: "4px", backgroundColor: "var(--brand)" }} />
 
@@ -77,29 +79,30 @@ export default async function EmbedPage({
           )}
           <div>
             <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
-            <p className="text-xs text-muted">{company.welcomeText || "Reserva tu mesa"}</p>
+            <p className="text-xs text-muted">{localizedCompanyText(company.welcomeText, lang, t("welcome"))}</p>
           </div>
         </header>
 
         <div className="p-5 pt-0">
           {sp.taken && (
             <p role="alert" className="mb-4 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn">
-              Ese horario se acaba de ocupar — elige otro, por favor.
+              {t("taken")}
             </p>
           )}
           {sp.error === "rate" && (
             <p role="alert" className="mb-4 rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn">
-              Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.
+              {t("rate")}
             </p>
           )}
 
           <form method="get" className="grid grid-cols-[auto_1fr] items-end gap-3 sm:flex sm:flex-wrap">
+            <input type="hidden" name="lang" value={lang} />
             {singleParty ? (
               <input type="hidden" name="party" value={1} />
             ) : (
               <div>
                 <label className="label" htmlFor="party">
-                  Personas
+                  {t("people")}
                 </label>
                 <select id="party" name="party" defaultValue={party} className="select">
                   {Array.from({ length: maxPartySize }, (_, i) => i + 1).map((n) => (
@@ -112,47 +115,47 @@ export default async function EmbedPage({
             )}
             <div className="min-w-0">
               <label className="label" htmlFor="date">
-                Fecha
+                {t("date")}
               </label>
-              <DatePickerField name="date" defaultValue={date || today} min={today} max={lastBookingDate(company.slug)} label="Fecha" availableDates={[...availableDates]} />
+              <DatePickerField language={lang} name="date" defaultValue={date || today} min={today} max={lastBookingDate(company.slug)} label={t("date")}  availableDates={[...availableDates]} />
             </div>
-            <button className="btn btn-brand col-span-2 w-full sm:w-auto">Buscar horarios</button>
+            <button className="btn btn-brand col-span-2 w-full sm:w-auto">{t("search")}</button>
           </form>
 
           {slots && (
             <section className="mt-6">
               <h2 className="mb-3 text-sm font-medium text-muted first-letter:uppercase">
-                {slots.length > 0 ? (singleParty ? prettyDate : `${prettyDate} · ${party} personas`) : "Sin horarios disponibles"}
+                {slots.length > 0 ? (singleParty ? prettyDate : `${prettyDate} · ${party} ${t("peopleSuffix")}`) : t("noSlots")}
               </h2>
               {slots.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {slots.map((s) => (
                     <Link
                       key={s.startAt}
-                      href={`/embed/${slug}/book?date=${date}&party=${party}&startAt=${encodeURIComponent(s.startAt)}`}
+                      href={`/embed/${slug}/book?date=${date}&party=${party}&startAt=${encodeURIComponent(s.startAt)}&lang=${lang}`}
                       className="chip flex-col gap-0 py-2"
                     >
                       <span>{s.time}</span>
                       {s.priceCents !== null && s.priceCents > 0 && (
                         <span className="text-[10px] font-normal opacity-75">
-                          {formatEuros(s.priceCents).replace(".", ",")} €/pers
+                          {money(s.priceCents, lang)} {t("perPerson").replace("€", "")}
                         </span>
                       )}
                       <span className="text-[10px] font-normal opacity-75">
-                        quedan {s.remaining} de {s.capacity}
+                        {t("remaining", { remaining: s.remaining, capacity: s.capacity })}
                       </span>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted">Prueba con otra fecha o un grupo más pequeño.</p>
+                <p className="text-sm text-muted">{t("tryAgain")}</p>
               )}
             </section>
           )}
         </div>
       </div>
       <p className="mt-3 text-center text-xs text-subtle">
-        Reservas gestionadas por{" "}
+        {t("managed")}{" "}
         <a
           href="https://host-ia.online"
           target="_blank"

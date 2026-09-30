@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "./db";
 import { resources, openingHours, closures, bookings, companies, users } from "./schema";
 import { requireRole } from "./session";
-import { computeRefundPercent, refundBooking } from "./cancellation-policy";
+import { cancelBookingWithRefund } from "./cancel-booking-with-refund";
 import { sendCustomerCancellation, sendCustomerConfirmation, sendOwnerCancellation } from "./email";
 import { getAvailability } from "./booking-data";
 import { insertBookingWithCapacityCheck, CapacityConflictError } from "./booking-insert";
@@ -23,7 +23,6 @@ import {
   parsePriceEuros,
   MAX_CAPACITY,
   MAX_COMMENTS_LEN,
-  MAX_EMAIL_LEN,
   MAX_NAME_LEN,
   MAX_PARTY_SIZE,
   MAX_PHONE_LEN,
@@ -168,13 +167,13 @@ export async function staffCreateBooking(formData: FormData): Promise<void> {
   const time = String(formData.get("time") ?? "");
   const partySize = parseBoundedInt(formData.get("partySize"), 1, MAX_PARTY_SIZE, 0);
   const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
-  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase() || null;
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN) || null;
   const comments = cleanText(formData.get("comments"), MAX_COMMENTS_LEN) || null;
   const notify = formData.get("notify") === "on";
 
   const back = `/dashboard/bookings?date=${date}`;
-  if (!isDateStr(date) || !isTimeStr(time) || partySize < 1 || !isValidPersonName(customerName) || (email !== null && !isValidEmail(email))) {
+  if (!isDateStr(date) || !isTimeStr(time) || partySize < 1 || !isValidPersonName(customerName) || !isValidEmail(email)) {
     redirect(`${back}&error=invalid`);
   }
 
@@ -216,6 +215,7 @@ export async function staffCreateBooking(formData: FormData): Promise<void> {
       .limit(1);
     const appUrl = process.env.APP_URL ?? "http://localhost:3000";
     await sendCustomerConfirmation({
+      companyId: company.id,
       to: email,
       customerName,
       companyName: company.name,
@@ -241,6 +241,7 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
 
   const [booking] = await db
     .select({
+      language: bookings.language,
       token: bookings.token,
       customerName: bookings.customerName,
       email: bookings.email,
@@ -258,10 +259,14 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
 
   if (!booking) redirect("/dashboard/bookings?error=1");
 
-  await db
-    .update(bookings)
-    .set({ status: "cancelled" })
-    .where(and(eq(bookings.id, id), eq(bookings.companyId, companyId)));
+  let result;
+  try {
+    result = await cancelBookingWithRefund(id, companyId);
+  } catch (err) {
+    console.error("Booking cancellation/refund failed:", err);
+    redirect(`/dashboard/bookings?error=refund`);
+  }
+  if (!result.changed) return;
 
   revalidatePath("/dashboard/bookings");
 
@@ -270,11 +275,6 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
     .from(companies)
     .where(eq(companies.id, companyId))
     .limit(1);
-
-  const refundPercent = await computeRefundPercent(booking, companyId);
-  if (refundPercent > 0 && booking.stripePaymentIntentId && company.stripeSecretKey && booking.amountCents) {
-    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, company.stripeSecretKey);
-  }
 
   if (!company) return;
 
@@ -285,6 +285,8 @@ export async function staffCancelBooking(formData: FormData): Promise<void> {
     .limit(1);
 
   if (booking.email) await sendCustomerCancellation({
+    language: booking.language,
+    refundCents: result.refundCents,
     to: booking.email,
     customerName: booking.customerName,
     companyName: company.name,

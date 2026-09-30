@@ -2,6 +2,14 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { type BookingLanguage } from "@/lib/booking-locale";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { esES, enUS, frFR, itIT } from "@mui/x-date-pickers/locales";
+import "dayjs/locale/es";
+import "dayjs/locale/en";
+import "dayjs/locale/fr";
+import "dayjs/locale/it";
 import dayjs from "dayjs";
 import { DatePicker, PickerDay } from "@mui/x-date-pickers";
 
@@ -55,6 +63,7 @@ function StyledDay(
 }
 
 export function DatePickerField({
+  language = "es",
   name,
   defaultValue,
   min,
@@ -64,6 +73,7 @@ export function DatePickerField({
   availableDates,
   autoSubmit,
 }: {
+  language?: BookingLanguage;
   name: string;
   defaultValue?: string;
   min?: string;
@@ -112,11 +122,11 @@ export function DatePickerField({
   }
 
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={language} localeText={{ es: esES, en: enUS, fr: frFR, it: itIT }[language].components.MuiLocalizationProvider.defaultProps.localeText}>
       <input ref={hiddenRef} type="hidden" name={name} value={value} />
       <DatePicker
         label={label}
-        value={value ? dayjs(value) : null}
+        value={value ? dayjs(value).locale(language) : null}
         onChange={handleChange}
         minDate={min ? dayjs(min) : undefined}
         maxDate={max ? dayjs(max) : undefined}
@@ -125,7 +135,7 @@ export function DatePickerField({
         }
         slots={{ day: StyledDay }}
         slotProps={{
-          day: { availableSet: hasAvailability ? availableSet : undefined } as any,
+          day: { availableSet: hasAvailability ? availableSet : undefined } as never,
           textField: {
             required,
             disabled: pending,
@@ -143,6 +153,6 @@ export function DatePickerField({
           },
         }}
       />
-    </>
+    </LocalizationProvider>
   );
 }

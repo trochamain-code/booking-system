@@ -1,10 +1,12 @@
 "use client";
 
+import { translator, type BookingLanguage } from "@/lib/booking-locale";
 import { useState } from "react";
 
 const INVALID_NAME_CHARACTERS = /[^\p{L}\s'’-]/gu;
 
 type NameFieldProps = {
+  language?: BookingLanguage;
   id: string;
   name: string;
   autoComplete?: string;
@@ -12,7 +14,7 @@ type NameFieldProps = {
 };
 
 /** Name input that removes digits and other unsupported characters as they are typed. */
-export function NameField({ id, name, autoComplete, className }: NameFieldProps) {
+export function NameField({ id, name, autoComplete, className, language = "es" }: NameFieldProps) {
   const [value, setValue] = useState("");
 
   return (
@@ -25,7 +27,7 @@ export function NameField({ id, name, autoComplete, className }: NameFieldProps)
       minLength={3}
       maxLength={120}
       pattern="[\\p{L}]+(?:[\\s'’-]+[\\p{L}]+)*"
-      title="Introduce un nombre de al menos 3 caracteres, sin números."
+      title={translator(language)("nameInvalid")}
       autoComplete={autoComplete}
       className={className}
     />

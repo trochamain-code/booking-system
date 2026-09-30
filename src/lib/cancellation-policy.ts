@@ -3,7 +3,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./db";
 import { cancellationPolicies } from "./schema";
-import { createStripeClient } from "./stripe";
 
 /**
  * Compute the refund percentage for a cancelled booking based on the
@@ -50,31 +49,6 @@ export async function computeRefundPercent(
   }
 
   return 0;
-}
-
-/**
- * Issue a Stripe refund for the given percentage of the payment.
- * Catches errors so the caller can proceed regardless.
- */
-export async function refundBooking(
-  stripePaymentIntentId: string,
-  amountCents: number,
-  refundPercent: number,
-  stripeSecretKey: string,
-): Promise<void> {
-  if (refundPercent <= 0) return;
-
-  const stripe = createStripeClient(stripeSecretKey);
-  const refundAmount = Math.round(amountCents * refundPercent / 100);
-
-  try {
-    await stripe.refunds.create({
-      payment_intent: stripePaymentIntentId,
-      ...(refundAmount < amountCents ? { amount: refundAmount } : {}),
-    });
-  } catch (refundErr) {
-    console.error("stripe refund failed:", refundErr);
-  }
 }
 
 // ---- CRUD for owners ----

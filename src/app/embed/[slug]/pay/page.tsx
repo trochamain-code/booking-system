@@ -1,3 +1,4 @@
+import { bookingLanguage, translator } from "@/lib/booking-locale";
 import { notFound, redirect } from "next/navigation";
 import { getCompanyBySlug } from "@/lib/booking-data";
 import { contrastText } from "@/lib/color";
@@ -8,20 +9,22 @@ export default async function PayPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ to?: string }>;
+  searchParams: Promise<{ lang?: string; to?: string }>;
 }) {
   const { slug } = await params;
-  const { to } = await searchParams;
+  const { to, lang: requestedLang } = await searchParams;
+  const lang = bookingLanguage(requestedLang);
+  const t = translator(lang);
 
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
   // Only ever forward to Stripe Checkout — anything else is an open-redirect attempt.
   const url = typeof to === "string" && to.startsWith("https://checkout.stripe.com/") ? to : null;
-  if (!url) redirect(`/embed/${slug}`);
+  if (!url) redirect(`/embed/${slug}?lang=${lang}`);
 
   return (
-    <main
+    <main lang={lang}
       className="mx-auto max-w-lg p-4 sm:p-6"
       style={{ ["--brand" as string]: company.primaryColor, ["--brand-text" as string]: contrastText(company.primaryColor) }}
     >
@@ -41,15 +44,14 @@ export default async function PayPage({
               {company.name.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <h1 className="text-2xl font-semibold text-ink">Un último paso</h1>
+          <h1 className="text-2xl font-semibold text-ink">{t("lastStep")}</h1>
           <p className="mt-2 text-sm text-muted">
-            Te llevamos al pago seguro de Stripe para confirmar tu reserva. Si no se abre automáticamente, pulsa el
-            botón.
+            {t("redirectPayment")}
           </p>
           <a href={url} target="_top" className="btn btn-brand mt-6">
-            Continuar al pago seguro
+            {t("continuePayment")}
           </a>
-          <p className="mt-4 text-xs text-subtle">Pago procesado por Stripe. No almacenamos los datos de tu tarjeta.</p>
+          <p className="mt-4 text-xs text-subtle">{t("stripeNote")}</p>
         </div>
       </div>
     </main>

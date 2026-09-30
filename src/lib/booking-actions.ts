@@ -1,10 +1,11 @@
 "use server";
+import { bookingLanguage } from "./booking-locale";
 
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { bookings, users, resources, companies } from "./schema";
-import { computeRefundPercent, refundBooking } from "./cancellation-policy";
+import { cancelBookingWithRefund } from "./cancel-booking-with-refund";
 import { sendCustomerCancellation, sendOwnerCancellation } from "./email";
 import { rateLimit, clientIp } from "./rate-limit";
 
@@ -12,6 +13,7 @@ import { rateLimit, clientIp } from "./rate-limit";
 // handles both the free path and the Stripe Checkout path.
 
 export async function cancelBooking(formData: FormData): Promise<void> {
+  const lang = bookingLanguage(formData.get("lang"));
   const token = String(formData.get("token") ?? "");
   if (!token) redirect("/");
 
@@ -19,10 +21,11 @@ export async function cancelBooking(formData: FormData): Promise<void> {
   // Tokens are unguessable, but throttle so the endpoint can't be hammered.
   // A throttled request must NOT pretend the booking was cancelled.
   const limit = rateLimit(`cancel:ip:${ip}`, 30, 60_000);
-  if (!limit.ok) redirect(`/cancel/${token}?error=rate`);
+  if (!limit.ok) redirect(`/cancel/${token}?error=rate&lang=${lang}`);
 
   const [booking] = await db
     .select({
+      language: bookings.language,
       id: bookings.id,
       customerName: bookings.customerName,
       email: bookings.email,
@@ -49,24 +52,21 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     .limit(1);
 
   if (!booking || booking.status === "cancelled") {
-    redirect(`/cancel/${token}?done=1`);
+    redirect(`/cancel/${token}?done=1&lang=${lang}`);
   }
 
-  // Status predicate makes the cancel atomic: a concurrent double-submit flips
-  // zero rows on the second run, so cancellation emails go out exactly once.
-  const cancelled = await db
-    .update(bookings)
-    .set({ status: "cancelled" })
-    .where(and(eq(bookings.token, token), eq(bookings.status, "confirmed")))
-    .returning({ id: bookings.id });
-  if (cancelled.length === 0) redirect(`/cancel/${token}?done=1`);
-
-  const refundPercent = await computeRefundPercent(booking, booking.companyId);
-  if (refundPercent > 0 && booking.stripePaymentIntentId && booking.stripeSecretKey && booking.amountCents) {
-    await refundBooking(booking.stripePaymentIntentId, booking.amountCents, refundPercent, booking.stripeSecretKey);
+  let result;
+  try {
+    result = await cancelBookingWithRefund(booking.id, booking.companyId);
+  } catch (err) {
+    console.error("Booking cancellation/refund failed:", err);
+    redirect(`/cancel/${token}?error=refund&lang=${lang}`);
   }
+  if (!result.changed) redirect(`/cancel/${token}?done=1&lang=${lang}`);
 
   if (booking.email) await sendCustomerCancellation({
+    language: bookingLanguage(booking.language),
+    refundCents: result.refundCents,
     to: booking.email,
     customerName: booking.customerName,
     companyName: booking.companyName,
@@ -111,5 +111,5 @@ export async function cancelBooking(formData: FormData): Promise<void> {
     });
   }
 
-  redirect(`/cancel/${token}?done=1`);
+  redirect(`/cancel/${token}?done=1&lang=${lang}`);
 }

@@ -1,6 +1,14 @@
+import { customerEmailContent } from "./customer-email";
+import { bookingLanguage, translator } from "./booking-locale";
 import nodemailer from "nodemailer";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import { cancellationPolicies } from "./schema";
+import { refundPolicyText } from "./refund-policy-text";
 
 type CustomerConfirmationInput = {
+  language?: string;
+  companyId: string;
   to: string;
   customerName: string;
   companyName: string;
@@ -13,6 +21,7 @@ type CustomerConfirmationInput = {
   partySize: number;
   resourceName: string;
   cancelUrl: string;
+  paid?: boolean;
 };
 
 type OwnerNotificationInput = {
@@ -34,6 +43,8 @@ type OwnerNotificationInput = {
 };
 
 type CustomerCancellationInput = {
+  language?: string;
+  refundCents?: number | null;
   to: string;
   customerName: string;
   companyName: string;
@@ -101,6 +112,7 @@ function fromAddress(senderName: string): string {
 // --- HTML layout ---
 
 type Branding = {
+  language?: string;
   logoUrl: string | null;
   primaryColor: string;
   companyName: string;
@@ -118,7 +130,7 @@ function htmlLayout(body: string, b: Branding): string {
     : "";
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${bookingLanguage(b.language)}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   @media only screen and (max-width:600px){
@@ -164,45 +176,15 @@ function infoRow(label: string, value: string): string {
 // --- Customer Confirmation ---
 
 export async function sendCustomerConfirmation(input: CustomerConfirmationInput): Promise<void> {
-  const when = formatWhen(input.startAt, input.timezone);
-  const subject = `Reserva confirmada — ${input.companyName}`;
-  const b: Branding = { logoUrl: input.logoUrl, primaryColor: input.primaryColor, companyName: input.companyName, contactInfo: input.contactInfo };
-
-  const text =
-    `Hola ${input.customerName}:\n\n` +
-    `Tu reserva en ${input.companyName} está confirmada.\n` +
-    `Cuándo: ${when} (${input.timezone})\n` +
-    `Personas: ${input.partySize}\n\n` +
-    `¿Necesitas cancelar? ${input.cancelUrl}\n`;
-
-  const body = `
-  <tr><td style="padding:24px 32px 8px">
-    <div style="text-align:center">
-      <div style="display:inline-block;width:56px;height:56px;border-radius:50%;background:#d1fae5;line-height:56px;font-size:28px;margin-bottom:8px">&#10003;</div>
-      <h1 style="margin:0;font-size:22px;font-weight:700;color:#111827">Reserva confirmada</h1>
-      <p style="margin:6px 0 0;font-size:15px;color:#6b7280">${esc(input.companyName)}</p>
-    </div>
-  </td></tr>
-
-  <tr><td style="padding:16px 32px">
-    <p style="font-size:15px;color:#374151;margin:0 0 16px">Hola <strong>${esc(input.customerName)}</strong>,</p>
-    <p style="font-size:15px;color:#374151;margin:0 0 20px">Tu reserva ha sido confirmada. Aquí tienes los detalles:</p>
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px">
-      ${infoRow("Fecha", when)}
-      ${infoRow("Zona horaria", input.timezone)}
-      ${infoRow("Personas", `${input.partySize}`)}
-      ${infoRow("Mesa / Área", input.resourceName)}
-    </table>
-  </td></tr>
-
-  <tr><td style="padding:20px 32px 8px;text-align:center">
-    <p style="font-size:14px;color:#6b7280;margin:0 0 12px">¿Necesitas cancelar tu reserva?</p>
-    <a href="${esc(input.cancelUrl)}" class="btn" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;text-decoration:none">Cancelar reserva</a>
-  </td></tr>
-  `;
-
-  await send({ to: input.to, subject, text, html: htmlLayout(body, b), label: "customer confirmation", senderName: input.senderName });
+  const policies = await db.select().from(cancellationPolicies)
+    .where(eq(cancellationPolicies.companyId, input.companyId))
+    .orderBy(cancellationPolicies.ruleType, cancellationPolicies.thresholdMinutes);
+  const policyLines = refundPolicyText(policies, input.language);
+  if (!input.paid) policyLines.unshift(translator(input.language)("unpaid"));
+  const content = customerEmailContent(input, { kind: "confirmation", policyLines, cancelUrl: input.cancelUrl, paid: input.paid });
+  await send({ to: input.to, subject: content.subject, text: content.text,
+    html: htmlLayout(content.body, { ...input, language: content.lang }),
+    label: "customer confirmation", senderName: input.senderName });
 }
 
 // --- Owner Notification ---
@@ -260,43 +242,10 @@ export async function sendOwnerNotification(input: OwnerNotificationInput): Prom
 // --- Customer Cancellation ---
 
 export async function sendCustomerCancellation(input: CustomerCancellationInput): Promise<void> {
-  const when = formatWhen(input.startAt, input.timezone);
-  const subject = `Reserva cancelada — ${input.companyName}`;
-  const b: Branding = { logoUrl: input.logoUrl, primaryColor: input.primaryColor, companyName: input.companyName, contactInfo: input.contactInfo };
-
-  const text =
-    `Hola ${input.customerName}:\n\n` +
-    `Tu reserva en ${input.companyName} ha sido cancelada.\n` +
-    `Cuándo: ${when} (${input.timezone})\n` +
-    `Personas: ${input.partySize}\n\n` +
-    `Si no solicitaste esta cancelación, por favor contacta al establecimiento.\n`;
-
-  const body = `
-  <tr><td style="padding:24px 32px 8px">
-    <div style="text-align:center">
-      <div style="display:inline-block;width:56px;height:56px;border-radius:50%;background:#fee2e2;line-height:56px;font-size:28px;margin-bottom:8px">&#10007;</div>
-      <h1 style="margin:0;font-size:22px;font-weight:700;color:#111827">Reserva cancelada</h1>
-      <p style="margin:6px 0 0;font-size:15px;color:#6b7280">${esc(input.companyName)}</p>
-    </div>
-  </td></tr>
-
-  <tr><td style="padding:16px 32px">
-    <p style="font-size:15px;color:#374151;margin:0 0 16px">Hola <strong>${esc(input.customerName)}</strong>,</p>
-    <p style="font-size:15px;color:#374151;margin:0 0 20px">Tu reserva ha sido cancelada según lo solicitado.</p>
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px">
-      ${infoRow("Fecha", when)}
-      ${infoRow("Zona horaria", input.timezone)}
-      ${infoRow("Personas", `${input.partySize}`)}
-    </table>
-  </td></tr>
-
-  <tr><td style="padding:20px 32px 8px">
-    <p style="font-size:14px;color:#6b7280;margin:0;text-align:center">Si no solicitaste esta cancelación, por favor contacta directamente al establecimiento.</p>
-  </td></tr>
-  `;
-
-  await send({ to: input.to, subject, text, html: htmlLayout(body, b), label: "customer cancellation", senderName: input.senderName });
+  const content = customerEmailContent(input, { kind: "cancellation", refundCents: input.refundCents });
+  await send({ to: input.to, subject: content.subject, text: content.text,
+    html: htmlLayout(content.body, { ...input, language: content.lang }),
+    label: "customer cancellation", senderName: input.senderName });
 }
 
 // --- Owner Cancellation ---

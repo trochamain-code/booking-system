@@ -11,6 +11,7 @@ export class CapacityConflictError extends Error {
 }
 
 export type NewBooking = {
+  language?: "es" | "en" | "fr" | "it";
   companyId: string;
   resourceId: string;
   customerName: string;

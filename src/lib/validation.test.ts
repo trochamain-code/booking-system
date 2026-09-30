@@ -16,6 +16,8 @@ import {
 } from "./validation";
 
 test("isValidEmail", () => {
+  assert.equal(isValidEmail(""), false);
+  assert.equal(isValidEmail("   "), false);
   assert.equal(isValidEmail("a@b.co"), true);
   assert.equal(isValidEmail("no-at"), false);
   assert.equal(isValidEmail("a@b"), false);

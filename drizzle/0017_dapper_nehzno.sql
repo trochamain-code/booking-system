@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "language" text DEFAULT 'es' NOT NULL;

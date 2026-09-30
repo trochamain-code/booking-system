@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import PhoneInput, { isPossiblePhoneNumber, type Country, type Value } from "react-phone-number-input";
 import flags from "react-phone-number-input/flags";
+import { translator, type BookingLanguage } from "@/lib/booking-locale";
+import { BookingLanguageProvider } from "./booking-language-provider";
+import en from "react-phone-number-input/locale/en.json";
+import fr from "react-phone-number-input/locale/fr.json";
+import it from "react-phone-number-input/locale/it.json";
 import es from "react-phone-number-input/locale/es.json";
 import "react-phone-number-input/style.css";
 import { PhoneCountrySelect } from "./phone-country-select";
@@ -19,6 +24,7 @@ import { PhoneCountrySelect } from "./phone-country-select";
  * y no debe depender de un dominio externo ni filtrar visitas a él.
  */
 export function PhoneField({
+  language = "es",
   id,
   name = "phone",
   required,
@@ -26,6 +32,7 @@ export function PhoneField({
   defaultCountry = "ES",
   autoComplete = "tel",
 }: {
+  language?: BookingLanguage;
   id?: string;
   name?: string;
   required?: boolean;
@@ -34,6 +41,7 @@ export function PhoneField({
   defaultCountry?: Country;
   autoComplete?: string;
 }) {
+  const t = translator(language);
   const [value, setValue] = useState<Value | undefined>((defaultValue as Value) || undefined);
   const [touched, setTouched] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -43,11 +51,11 @@ export function PhoneField({
   const empty = !value;
   const error = empty
     ? required
-      ? "Introduce un teléfono de contacto."
+      ? t("phoneRequired")
       : ""
     : isPossiblePhoneNumber(value)
       ? ""
-      : "Ese número no parece válido para el país elegido.";
+      : t("phoneInvalid");
 
   // El <input> visible nunca está vacío (lleva el prefijo dentro), así que el
   // `required` del navegador no llegaría a saltar. Se traslada el estado real
@@ -61,13 +69,13 @@ export function PhoneField({
   const showError = touched && Boolean(error);
 
   return (
-    <div className="phone-field" ref={wrapperRef}>
+    <BookingLanguageProvider language={language}><div className="phone-field" ref={wrapperRef}>
       <input type="hidden" name={name} value={value ?? ""} />
       <PhoneInput
         id={id}
         international
         flags={flags}
-        labels={es}
+        labels={{ es, en, fr, it }[language]}
         defaultCountry={defaultCountry}
         countryCallingCodeEditable={false}
         // Sin opción "Internacional": con el prefijo bloqueado dejaría el campo en
@@ -87,6 +95,6 @@ export function PhoneField({
           {error}
         </p>
       )}
-    </div>
+    </div></BookingLanguageProvider>
   );
 }

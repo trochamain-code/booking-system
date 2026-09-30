@@ -1,5 +1,6 @@
 "use server";
 
+import { bookingLanguage, translator, intlLocale, localizedCompanyText } from "./booking-locale";
 import crypto from "node:crypto";
 import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
@@ -19,7 +20,6 @@ import {
   isValidPersonName,
   isDateStr,
   MAX_NAME_LEN,
-  MAX_EMAIL_LEN,
   MAX_PHONE_LEN,
   MAX_COMMENTS_LEN,
   MAX_PARTY_SIZE,
@@ -34,32 +34,34 @@ export type ConfirmPaymentResult =
   | { ok: false; error: "rate" | "invalid_company" | "stripe_error" | "not_paid" | "pending" | "invalid_token" | "not_found" | "slot_taken"; refunded?: boolean };
 
 export async function createBookingCheckout(formData: FormData): Promise<void> {
+  const lang = bookingLanguage(formData.get("lang"));
+  const t = translator(lang);
   const ip = await clientIp();
   const limit = rateLimit(`book:ip:${ip}`, 20, 60_000);
-  if (!limit.ok) redirect(`/embed/${String(formData.get("slug") ?? "")}?error=rate`);
+  if (!limit.ok) redirect(`/embed/${String(formData.get("slug") ?? "")}?error=rate&lang=${lang}`);
 
   const slug = String(formData.get("slug") ?? "");
   const date = String(formData.get("date") ?? "");
   const startAtIso = String(formData.get("startAt") ?? "");
   const partySize = parseInt(String(formData.get("partySize") ?? ""), 10);
   const customerName = cleanText(formData.get("customerName"), MAX_NAME_LEN);
-  const email = cleanText(formData.get("email"), MAX_EMAIL_LEN).toLowerCase() || null;
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = cleanText(formData.get("phone"), MAX_PHONE_LEN);
   const comments = cleanText(formData.get("comments"), MAX_COMMENTS_LEN) || null;
 
-  const bookHref = `/embed/${slug}/book?date=${date}&party=${partySize}&startAt=${encodeURIComponent(startAtIso)}`;
+  const bookHref = `/embed/${slug}/book?date=${date}&party=${partySize}&startAt=${encodeURIComponent(startAtIso)}&lang=${lang}`;
 
   const company = await getCompanyBySlug(slug);
-  if (!company) redirect(`/embed/${slug}`);
+  if (!company) redirect(`/embed/${slug}?lang=${lang}`);
 
   const validParty = Number.isInteger(partySize) && partySize >= 1 && partySize <= MAX_PARTY_SIZE;
-  if (!isValidPersonName(customerName) || !phone || (email !== null && !isValidEmail(email)) || !validParty || !isDateStr(date) || !startAtIso) {
+  if (!isValidPersonName(customerName) || !phone || !isValidEmail(email) || !validParty || !isDateStr(date) || !startAtIso) {
     redirect(`${bookHref}&error=invalid`);
   }
 
   const slots = await getAvailability(company, date, partySize);
   const slot = slots.find((s) => s.startAt === startAtIso);
-  if (!slot) redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1`);
+  if (!slot) redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1&lang=${lang}`);
 
   const [resource] = await db
     .select({ name: resources.name, priceCents: resources.priceCents })
@@ -74,6 +76,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   if (!company.stripeEnabled || !resource.priceCents || resource.priceCents < 1) {
     try {
       await insertBookingWithCapacityCheck({
+        language: lang,
         companyId: company.id,
         resourceId: slot.resourceId,
         customerName,
@@ -87,14 +90,16 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
       });
     } catch (err) {
       if (err instanceof CapacityConflictError || isSlotConflict(err)) {
-        redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1`);
+        redirect(`/embed/${slug}?date=${date}&party=${partySize}&taken=1&lang=${lang}`);
       }
       throw err;
     }
 
-    const cancelUrl = `${appUrl}/cancel/${token}`;
+    const cancelUrl = `${appUrl}/cancel/${token}?lang=${lang}`;
 
     if (email) await sendCustomerConfirmation({
+      language: lang,
+      companyId: company.id,
       to: email,
       customerName,
       companyName: company.name,
@@ -130,7 +135,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
       });
     }
 
-    redirect(`/embed/${slug}/confirmed?token=${token}`);
+    redirect(`/embed/${slug}/confirmed?token=${token}&lang=${lang}`);
   }
 
   const stripeSecret = company.stripeSecretKey;
@@ -157,21 +162,22 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
           price_data: {
             currency: "eur",
             product_data: {
-              name: `Reserva: ${resource.name}`,
-              description: `${company.name} · ${partySize} personas · ${new Intl.DateTimeFormat("es-ES", { timeZone: company.timezone, dateStyle: "long", timeStyle: "short" }).format(new Date(startAtIso))}`,
+              name: `${t("reservation")}: ${localizedCompanyText(resource.name, lang, resource.name)}`,
+              description: `${company.name} · ${partySize} ${t("peopleSuffix")} · ${new Intl.DateTimeFormat(intlLocale[lang], { timeZone: company.timezone, dateStyle: "long", timeStyle: "short" }).format(new Date(startAtIso))}`,
             },
             unit_amount: resource.priceCents * partySize,
           },
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/embed/${slug}/confirmed?session_id={CHECKOUT_SESSION_ID}&token=${token}`,
-      cancel_url: `${appUrl}/embed/${slug}?date=${date}&party=${partySize}`,
+      success_url: `${appUrl}/embed/${slug}/confirmed?session_id={CHECKOUT_SESSION_ID}&token=${token}&lang=${lang}`,
+      cancel_url: `${appUrl}/embed/${slug}?date=${date}&party=${partySize}&lang=${lang}`,
       customer_email: email ?? undefined,
-      locale: "es",
+      locale: lang,
       // Checkout sessions expire; the booking row is only created after payment in
       // confirmPayment, driven entirely by this metadata (never by client input).
       metadata: {
+        language: lang,
         slug,
         companyId: company.id,
         resourceId: slot.resourceId,
@@ -212,7 +218,7 @@ export async function createBookingCheckout(formData: FormData): Promise<void> {
   // Stripe Checkout refuses to run inside an iframe, and the widget is usually
   // embedded on the tenant's site. Send the iframe to an interstitial that
   // navigates the TOP window to Checkout instead of redirecting here directly.
-  redirect(`/embed/${slug}/pay?to=${encodeURIComponent(sessionUrl)}`);
+  redirect(`/embed/${slug}/pay?to=${encodeURIComponent(sessionUrl)}&lang=${lang}`);
 }
 
 export async function confirmPayment(sessionId: string, token: string, slug: string): Promise<ConfirmPaymentResult> {

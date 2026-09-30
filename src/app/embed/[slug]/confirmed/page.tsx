@@ -1,3 +1,4 @@
+import { bookingLanguage, translator, intlLocale, localizedCompanyText } from "@/lib/booking-locale";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookingByToken } from "@/lib/booking-data";
@@ -10,10 +11,12 @@ export default async function ConfirmedPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ token?: string; session_id?: string }>;
+  searchParams: Promise<{ lang?: string; token?: string; session_id?: string }>;
 }) {
   const { slug } = await params;
-  const { token, session_id: sessionId } = await searchParams;
+  const { token, session_id: sessionId, lang: requestedLang } = await searchParams;
+  let lang = bookingLanguage(requestedLang);
+  let t = translator(lang);
 
   if (!token) notFound();
 
@@ -23,34 +26,34 @@ export default async function ConfirmedPage({
   if (!booking && sessionId && token) {
     const result = await confirmPayment(sessionId, token, slug);
     if (result.ok) {
-      booking = { ...result.booking, slug };
+      booking = await getBookingByToken(token);
       paymentConfirmed = true;
     } else {
       // The customer may have just PAID — never show a bare 404 here.
       const messages: Record<string, string> = {
         slot_taken: result.refunded
-          ? "El horario elegido dejó de estar disponible mientras completabas el pago. Te hemos devuelto el importe automáticamente — no se te cobrará nada."
-          : "El horario elegido dejó de estar disponible mientras completabas el pago. No hemos podido procesar la devolución automáticamente: contacta con el establecimiento para que te devuelvan el importe.",
-        not_paid: "El pago no se ha completado, así que la reserva no se ha creado. Puedes intentarlo de nuevo.",
+          ? t("slotRefunded")
+          : t("slotRefundFailed"),
+        not_paid: t("notPaid"),
         pending:
-          "Tu pago está en proceso (las transferencias bancarias pueden tardar). La reserva se confirmará automáticamente en cuanto se reciba el pago; guarda esta página y recárgala más tarde para ver la confirmación.",
-        rate: "Demasiadas solicitudes. Espera un momento y recarga esta página.",
+          t("asyncPayment"),
+        rate: t("reloadRate"),
       };
       const message =
         messages[result.error] ??
-        "No hemos podido verificar el pago en este momento. Recarga esta página en unos segundos; si el problema persiste, contacta con el establecimiento.";
+        t("verifyError");
       const pending = result.error === "pending";
       return (
-        <main className="mx-auto max-w-lg p-4 sm:p-6">
+        <main lang={lang} className="mx-auto max-w-lg p-4 sm:p-6">
           <div className="card overflow-hidden">
             <div style={{ height: "4px", backgroundColor: "var(--color-subtle)" }} />
             <div className="p-8 text-center">
               <h1 className="text-2xl font-semibold text-ink">
-                {pending ? "Pago en proceso" : "No se pudo completar la reserva"}
+                {pending ? t("pending") : t("failed")}
               </h1>
               <p className="mt-4 text-sm text-muted">{message}</p>
-              <Link href={`/embed/${slug}`} className="mt-6 inline-block text-sm text-muted underline underline-offset-4 hover:text-ink">
-                Volver a las reservas
+              <Link href={`/embed/${slug}?lang=${lang}`} className="mt-6 inline-block text-sm text-muted underline underline-offset-4 hover:text-ink">
+                {t("back")}
               </Link>
             </div>
           </div>
@@ -60,8 +63,10 @@ export default async function ConfirmedPage({
   }
 
   if (!booking) notFound();
+  lang = bookingLanguage(requestedLang ?? booking.language);
+  t = translator(lang);
 
-  const when = new Intl.DateTimeFormat("es-ES", {
+  const when = new Intl.DateTimeFormat(intlLocale[lang], {
     timeZone: booking.timezone,
     weekday: "long",
     day: "numeric",
@@ -73,7 +78,7 @@ export default async function ConfirmedPage({
   const cancelled = booking.status === "cancelled";
 
   return (
-    <main
+    <main lang={lang}
       className="mx-auto max-w-lg p-4 sm:p-6"
       style={{ ["--brand" as string]: booking.primaryColor, ["--brand-text" as string]: contrastText(booking.primaryColor) }}
     >
@@ -105,15 +110,15 @@ export default async function ConfirmedPage({
             )}
           </div>
           <h1 className="text-2xl font-semibold text-ink">
-            {cancelled ? "Reserva cancelada" : paymentConfirmed ? "¡Pago confirmado!" : "¡Reserva confirmada!"}
+            {cancelled ? t("cancelled") : paymentConfirmed ? t("paid") : t("confirmed")}
           </h1>
-          <p className="mt-1 text-sm text-muted">{booking.welcomeText || booking.companyName}</p>
+          <p className="mt-1 text-sm text-muted">{localizedCompanyText(booking.welcomeText, lang, booking.companyName)}</p>
           <p className="mt-2 text-ink first-letter:uppercase">{when}</p>
           <p className="text-sm text-muted">
-            {booking.companyName} · {booking.partySize} personas
+            {booking.companyName} · {booking.partySize} {t("peopleSuffix")}
           </p>
           {!cancelled && booking.email && (
-            <p className="mt-4 text-sm text-muted">Te hemos enviado un correo con los detalles.</p>
+            <p className="mt-4 text-sm text-muted">{t("emailSent")}</p>
           )}
         </div>
       </div>

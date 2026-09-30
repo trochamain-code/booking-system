@@ -4,6 +4,24 @@ Multi-tenant booking SaaS for any capacity-based business (restaurants, salons, 
 Companies manage bookable resources + opening hours; customers book a day/time through an
 embeddable iframe widget and get an email confirmation. Customers never need an account.
 
+New bookings require a valid email in the widget, staff form and public booking API.
+Paid confirmation emails link to a cancellation page that previews the refund under
+the business's existing cancellation rules (no matching rule means no refund).
+Cancellation requires a form submission; opening the email link does not cancel.
+The refund amount is persisted before contacting Stripe, and retries reuse the same
+refund. If the refund request fails, the booking remains active and cancellation can
+be retried. An accepted refund is described as requested, rather than money already
+received; see [Stripe refund statuses](https://docs.stripe.com/api/refunds/object).
+
+Apply migration `0016_little_donald_blake` before running this version. Existing
+bookings without email remain readable and cancellable. Historical cancelled
+bookings are not automatically refunded retroactively.
+
+For cancellation database tests, migrate a disposable database, then run
+`BOOKING_TEST_DATABASE_URL=postgres://... pnpm test`. These tests are skipped when
+that explicit test URL is absent. Stripe refund tests use a fake client and do not
+move money.
+
 Single Next.js app + Postgres. No separate backend. See `PLAN.md` for the full plan and the
 deferred-features list.
 
@@ -88,3 +106,19 @@ into free slots for a party size, auto-assigning the smallest fitting resource, 
 
 ## Env (`.env`)
 `DATABASE_URL`, `AUTH_SECRET` required (in production `AUTH_SECRET` must be a real 32+ byte secret — the app will not start otherwise). `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL` optional.
+
+## Customer booking languages
+
+The widget accepts `?lang=es`, `en`, `fr`, or `it` (Spanish by default). Pass the
+website language in the iframe URL. Search forms, booking links, validation,
+calendar and country pickers, Stripe Checkout and return URLs preserve it.
+Bookings store the selected language; Stripe metadata also carries it so async
+payment confirmations use the same language. Customer confirmation and
+cancellation emails, refund policies and cancellation pages use that language.
+Existing bookings default to Spanish. The public booking API accepts optional
+`language` (or `lang`) with the same normalization and fallback.
+
+Company names, contact information and customer comments are kept as entered.
+Published Madriguera welcome/resource labels have explicit translations in
+`src/lib/booking-locale.ts`; update those translations when changing these labels.
+Internal staff notifications and the administration dashboard use Spanish.

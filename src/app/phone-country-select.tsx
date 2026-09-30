@@ -1,5 +1,7 @@
 "use client";
 
+import { useBookingLanguage } from "./booking-language-provider";
+import { translator } from "@/lib/booking-locale";
 import {
   useEffect,
   useId,
@@ -54,6 +56,7 @@ export function PhoneCountrySelect({
   onFocus?: (event: FocusEvent) => void;
   onBlur?: (event: FocusEvent) => void;
 }) {
+  const t = translator(useBookingLanguage());
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -207,7 +210,7 @@ export function PhoneCountrySelect({
         ref={buttonRef}
         type="button"
         className="phone-country-btn"
-        aria-label={selected ? `País: ${selected.label}` : ariaLabel}
+        aria-label={selected ? `${t("country")}: ${selected.label}` : ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled || readOnly}
@@ -235,8 +238,8 @@ export function PhoneCountrySelect({
                 setActive(0);
               }}
               onKeyDown={onKeyDown}
-              placeholder="Buscar país o prefijo (+34)"
-              aria-label="Buscar país o prefijo"
+              placeholder={t("countryPlaceholder")}
+              aria-label={t("countrySearch")}
               aria-autocomplete="list"
               aria-controls={listId}
               aria-activedescendant={activeId}
@@ -248,7 +251,7 @@ export function PhoneCountrySelect({
             />
           </div>
           <ul ref={listRef} id={listId} role="listbox" className="phone-country-list">
-            {filtered.length === 0 && <li className="phone-country-empty">Sin resultados</li>}
+            {filtered.length === 0 && <li className="phone-country-empty">{t("noResults")}</li>}
             {filtered.map((c, i) => (
               <li
                 key={c.code}

@@ -1,3 +1,4 @@
+import { bookingLanguage } from "./booking-locale";
 import type Stripe from "stripe";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db";
@@ -88,6 +89,8 @@ export async function fulfillCheckoutSession(
     return { ok: false, error: "bad_metadata" };
   }
   const token = meta.token;
+  // Checkout also collects email for sessions created before it was mandatory.
+  const email = meta.email || session.customer_details?.email || session.customer_email || null;
 
   const existing = await fetchBookingView(token);
   if (existing) return { ok: true, booking: existing };
@@ -102,10 +105,11 @@ export async function fulfillCheckoutSession(
   // date, which we no longer have). Only the aforo still has to hold.
   try {
     await insertBookingWithCapacityCheck({
+      language: bookingLanguage(meta.language),
       companyId: meta.companyId,
       resourceId: meta.resourceId,
       customerName: meta.customerName,
-      email: meta.email || null,
+      email,
       phone: meta.phone || null,
       comments: meta.comments || null,
       partySize: parseInt(meta.partySize ?? "1", 10),
@@ -138,7 +142,7 @@ export async function fulfillCheckoutSession(
   }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const cancelUrl = `${appUrl}/cancel/${token}`;
+  const cancelUrl = `${appUrl}/cancel/${token}?lang=${bookingLanguage(meta.language)}`;
 
   const [resource] = await db
     .select({ name: resources.name })
@@ -146,8 +150,10 @@ export async function fulfillCheckoutSession(
     .where(eq(resources.id, meta.resourceId))
     .limit(1);
 
-  if (meta.email) await sendCustomerConfirmation({
-    to: meta.email,
+  if (email) await sendCustomerConfirmation({
+    language: bookingLanguage(meta.language),
+    companyId: company.id,
+    to: email,
     customerName: meta.customerName,
     companyName: company.name,
     senderName: company.senderName || company.name,
@@ -159,6 +165,7 @@ export async function fulfillCheckoutSession(
     partySize: parseInt(meta.partySize ?? "1", 10),
     resourceName: resource?.name ?? "Sin especificar",
     cancelUrl,
+    paid: true,
   });
 
   const owner = await ownerEmail(company.id);
@@ -166,7 +173,7 @@ export async function fulfillCheckoutSession(
     await sendOwnerNotification({
       ownerEmail: owner,
       customerName: meta.customerName,
-      customerEmail: meta.email || null,
+      customerEmail: email,
       customerPhone: meta.phone || null,
       customerComments: meta.comments || null,
       companyName: company.name,

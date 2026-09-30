@@ -134,7 +134,7 @@ export default async function AdminCompanyPage({
       <main className="mx-auto max-w-5xl space-y-10 px-6 py-8">
         {error && (
           <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">
-            {error === "email" ? "Ese correo ya está en uso por otro usuario." : "No se pudo guardar. Comprueba los datos."}
+            {error === "refund" ? "No se pudo completar el reembolso. La reserva sigue activa; vuelve a intentar la cancelación." : error === "email" ? "Ese correo ya está en uso por otro usuario." : "No se pudo guardar. Comprueba los datos."}
           </p>
         )}
         {sp.updated && (

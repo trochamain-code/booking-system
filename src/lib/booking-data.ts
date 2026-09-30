@@ -20,7 +20,14 @@ export async function getCompanyBySlug(slug: string): Promise<Company | undefine
 export async function getBookingByToken(token: string) {
   const [row] = await db
     .select({
+      language: bookings.language,
       status: bookings.status,
+      companyId: bookings.companyId,
+      createdAt: bookings.createdAt,
+      amountCents: bookings.amountCents,
+      stripePaymentIntentId: bookings.stripePaymentIntentId,
+      cancellationRefundCents: bookings.cancellationRefundCents,
+      stripeRefundId: bookings.stripeRefundId,
       startAt: bookings.startAt,
       partySize: bookings.partySize,
       customerName: bookings.customerName,
